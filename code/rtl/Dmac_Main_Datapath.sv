@@ -39,11 +39,27 @@ module Dmac_Main_Datapath(
 logic dmac_selected;
 logic [3:0] decoded_address;
 logic [31:0] Size_Reg, SAddr_Reg, DAddr_Reg, Ctrl_Reg;
+logic [31:0] latched_address;
+logic latched_write, latched_sel, latched_readyIn;
 
-assign  dmac_selected = write && HSel && ReadyIn;
-assign decoded_address = HAddr[5:2];
+assign  dmac_selected = latched_write && latched_readyIn && latched_sel;
+assign decoded_address = latched_address[5:2];
 
 assign C_config = Ctrl_Reg[16];
+
+always_ff @( posedge clk ) begin
+    if (rst) begin
+        latched_address = 32'b0;
+        latched_write = 0;
+        latched_readyIn = 0;
+        latched_sel = 0;
+    end else begin
+        latched_address <= HAddr;
+        latched_readyIn <= ReadyIn;
+        latched_sel <= HSel;
+        latched_write <= write;
+    end
+end
 
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin

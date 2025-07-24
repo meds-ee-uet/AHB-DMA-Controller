@@ -112,23 +112,23 @@ module Dmac_Top_tb;
 
         // Request from Peripheral 
         @(posedge clk);
-        DmacReq = 2'b11;
+        DmacReq = 2'b01;
         // Program DMA channel via CPU-like interface
         @(posedge clk);
         HSel = 1; write = 1;
-        HAddr = 32'h0000_0000;  // Size Reg
-        HWData = 32'd18;         
+        HAddr = 32'h0000_0000;  // Size Reg  
         @(posedge clk);
         HAddr = 32'h0000_0004;  // Source
-        HWData = 32'h0000_0000; 
+        HWData = 32'd18;
         @(posedge clk);
         HAddr = 32'h0000_0008;  // Destination
-        HWData = 32'h0000_1000; 
+        HWData = 32'h0000_0000; 
         @(posedge clk);
         HAddr = 32'h0000_000C;  // Control register 
-        HWData = 32'h0001_0004;
+        HWData = 32'h0000_1000; 
 
         @(posedge clk);
+        HWData = 32'h0001_0004;
         HSel = 0;
         write = 0;
 
@@ -150,10 +150,10 @@ task monitor(input logic [31:0] transfer_size);
     automatic int failed = 0;
     for(int i = 0; i < transfer_size; i++) begin
         if (source.mem[i] == dest.mem[i]) begin
-            $display("\033[1;32mPASS: {Source[%d] = %x} == {Destination[%d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
+            $display("\033[1;32mPASS: {Source[%-2d] = %x} == {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
             passed += 1;
         end else begin
-            $display("\033[1;31mFAIL: {Source[%d] = %x} != {Destination[%d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
+            $display("\033[1;31mFAIL: {Source[%-2d] = %x} != {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
             failed += 1;
         end
     end
