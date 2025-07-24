@@ -28,6 +28,8 @@ module Dmac_Main_Ctrl(
     input  logic C_config,
 
     output logic con_sel,
+    output logic HReadyOut,
+    output logic [1:0] S_HResp,
     output logic Bus_Req,
     output logic Interrupt,
     output logic con_en,
@@ -44,6 +46,9 @@ module Dmac_Main_Ctrl(
         else
             current_state <= next_state;
     end
+
+assign HReady = 1'b1;
+assign S_HResp  = 2'b00;
 
     always_comb begin
         // Default outputs

@@ -31,7 +31,7 @@ module channel_ctrl(
     input  logic       bsz,
     input  logic       tslb,
     input  logic       tsz,
-    input  logic [1:0] HResp,
+    input  logic [1:0] M_HResp,
 
     // Outputs
     output logic       irq,
@@ -62,9 +62,9 @@ module channel_ctrl(
             READ_WAIT: begin
                 if (!readyIn)
                     next_state = READ_WAIT;
-                else if (readyIn && !bsz && !HResp)
+                else if (readyIn && !bsz && !M_HResp)
                     next_state = READ_WAIT;
-                else if (readyIn && bsz && (HResp == 0))
+                else if (readyIn && bsz && (M_HResp == 0))
                     next_state = WRITE_WAIT;
                 else
                     next_state = READ_WAIT;
@@ -73,9 +73,9 @@ module channel_ctrl(
             WRITE_WAIT: begin
                 if (!readyIn)
                     next_state = WRITE_WAIT;
-                else if (readyIn && !bsz && (HResp == 0))
+                else if (readyIn && !bsz && (M_HResp == 0))
                     next_state = WRITE_WAIT; 
-                else if (readyIn && bsz && (HResp == 0))
+                else if (readyIn && bsz && (M_HResp == 0))
                     next_state = ENABLED;
                 else
                     next_state = WRITE_WAIT;
@@ -133,14 +133,14 @@ module channel_ctrl(
                     write     = 0;
                     HTrans    = BUSY;
                 end  
-                else if (readyIn && (HResp == 0) && !bsz)  begin
+                else if (readyIn && (M_HResp == 0) && !bsz)  begin
                     write     = 0;
                     wr_en     = 1;
                     count_en  = 1;
                     s_en      = 1;
                     HTrans    = SEQ;
 
-                end else if (bsz && (HResp == 0) && readyIn)  begin
+                end else if (bsz && (M_HResp == 0) && readyIn)  begin
                     wr_en = 1;
                     count_en = 1;
                     write    = 1;
@@ -154,7 +154,7 @@ module channel_ctrl(
                 if (!readyIn) begin
                     write     = 1;
                     HTrans    = BUSY;
-                end else if (readyIn && (HResp == 0) && !bsz) begin
+                end else if (readyIn && (M_HResp == 0) && !bsz) begin
                     h_sel = 1;
                     write = 1;
                     trigger = 1;
@@ -163,7 +163,7 @@ module channel_ctrl(
                     count_en  = 1;
                     HTrans    = SEQ;
                 end
-                else if (readyIn && (HResp == 0) && !tslb && bsz) begin
+                else if (readyIn && (M_HResp == 0) && !tslb && bsz) begin
                     ts_en = 1;
                     h_sel = 1;
                     write = 1;
@@ -171,7 +171,7 @@ module channel_ctrl(
                     rd_en = 1;
                     HTrans = BUSY;
 
-                end else if (readyIn && (HResp == 0) && tslb && bsz) begin
+                end else if (readyIn && (M_HResp == 0) && tslb && bsz) begin
                     burst_en = 1;
                     b_sel = 1;
                     ts_en = 1;

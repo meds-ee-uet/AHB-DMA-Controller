@@ -35,8 +35,8 @@ module Dmac_Top_tb;
     Dmac_Top dut (
         .clk(clk), .rst(rst),
         .MRData(MRData), .write(write), .HSel(HSel), .STrans(2'b10),
-        .HWData(HWData), .HAddr(HAddr), .HReady(1'b1), .HResp(HResp),
-        .DmacReq(DmacReq), .Bus_Grant(Bus_Grant),
+        .HWData(HWData), .HAddr(HAddr), .HReady(1'b1), .M_HResp(HResp),
+        .DmacReq(DmacReq), .Bus_Grant(Bus_Grant), .HReadyOut(), .S_HResp(),
         .MAddress(MAddress), .MWData(MWData), .MBurst_Size(MBurst_Size),
         .MWrite(MWrite), .MTrans(MTrans), .Bus_Req(Bus_Req),
         .Interrupt(Interrupt), .ReqAck(ReqAck)

@@ -11,15 +11,21 @@ module Dmac_Top (
     input  logic        clk,
     input  logic        rst,
 
-    input  logic [31:0] MRData,
     // AHB-lite Bus Interface (from CPU (master))
     input  logic        write,
     input  logic        HSel,
     input  logic [1:0]  STrans,
     input  logic [31:0] HWData,
     input  logic [31:0] HAddr,
-    input  logic        HReady, 
-    input  logic [1:0]  HResp,
+
+    // AHB-lite Bus Interface (from peripheral (slave)) 
+    input  logic [31:0] MRData,
+    input  logic        HReady,
+    input  logic [1:0]  M_HResp,
+
+    // AHB-lite Bus Interface (to CPU (master))
+    output logic HReadyOut,
+    output logic [1:0] S_HResp,
 
     // DMA request signals from two sources
     input  logic [1:0]  DmacReq,     // {channel_1_req, channel_2_req}
@@ -55,8 +61,8 @@ module Dmac_Top (
         .HWData         (HWData),
         .HAddr          (HAddr),
         .MRData         (MRData),
-        .HReady      (HReady),
-        .HResp          (HResp),
+        .HReady         (HReady),
+        .M_HResp          (M_HResp),
         .con_en         (con_en),
         .con_sel        (con_sel),
 
@@ -81,6 +87,8 @@ module Dmac_Top (
         .C_config       (C_config),
 
         .con_sel        (con_sel),
+        .HReadyOut      (HReadyOut),
+        .S_HResp          (S_HResp),
         .Bus_Req        (Bus_Req),
         .Interrupt      (Interrupt),
         .con_en         (con_en),
