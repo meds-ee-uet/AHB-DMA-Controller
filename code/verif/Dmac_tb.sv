@@ -34,7 +34,7 @@ module Dmac_Top_tb;
     // Instantiate DUT
     Dmac_Top dut (
         .clk(clk), .rst(rst),
-        .MRData(MRData), .write(write), .HSel(HSel), .ReadyIn(1'b1),
+        .MRData(MRData), .write(write), .HSel(HSel), .STrans(2'b10),
         .HWData(HWData), .HAddr(HAddr), .HReadyOut(1'b1), .HResp(HResp),
         .DmacReq(DmacReq), .Bus_Grant(Bus_Grant),
         .MAddress(MAddress), .MWData(MWData), .MBurst_Size(MBurst_Size),

@@ -15,7 +15,7 @@ module Dmac_Top (
     // AHB-lite Bus Interface (from CPU (master))
     input  logic        write,
     input  logic        HSel,
-    input  logic        ReadyIn,
+    input  logic [1:0]  STrans,
     input  logic [31:0] HWData,
     input  logic [31:0] HAddr,
     input  logic        HReadyOut, //Why?
@@ -49,7 +49,7 @@ module Dmac_Top (
         .rst            (rst),
         .write          (write),
         .HSel           (HSel),
-        .ReadyIn        (ReadyIn),
+        .STrans         (STrans),
         .channel_en_1   (channel_en_1),
         .channel_en_2   (channel_en_2),
         .HWData         (HWData),

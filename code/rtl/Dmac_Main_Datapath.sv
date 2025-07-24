@@ -15,7 +15,7 @@ module Dmac_Main_Datapath(
     input logic rst,
     input logic write,
     input logic HSel,
-    input logic ReadyIn, //From CPU to configure it
+    input logic [1:0] STrans, //From CPU to configure it
     input logic channel_en_1,
     input logic channel_en_2,
     input logic [31:0] HWData,
@@ -40,9 +40,10 @@ logic dmac_selected;
 logic [3:0] decoded_address;
 logic [31:0] Size_Reg, SAddr_Reg, DAddr_Reg, Ctrl_Reg;
 logic [31:0] latched_address;
-logic latched_write, latched_sel, latched_readyIn;
+logic latched_write, latched_sel;
+logic [1:0] latched_STrans;
 
-assign  dmac_selected = latched_write && latched_readyIn && latched_sel;
+assign  dmac_selected = latched_write && latched_STrans[1] && latched_sel;
 assign decoded_address = latched_address[5:2];
 
 assign C_config = Ctrl_Reg[16];
@@ -51,11 +52,11 @@ always_ff @( posedge clk ) begin
     if (rst) begin
         latched_address = 32'b0;
         latched_write = 0;
-        latched_readyIn = 0;
+        latched_STrans = 2'b0;
         latched_sel = 0;
     end else begin
         latched_address <= HAddr;
-        latched_readyIn <= ReadyIn;
+        latched_STrans <= STrans;
         latched_sel <= HSel;
         latched_write <= write;
     end
