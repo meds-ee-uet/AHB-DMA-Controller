@@ -1,3 +1,4 @@
 test/
 transcript
 vsim.wlf
+makefile

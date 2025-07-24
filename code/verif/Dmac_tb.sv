@@ -17,7 +17,7 @@ module Dmac_Top_tb;
     logic [31:0] MRData;
     logic write, HSel;
     logic [31:0] HWData, HAddr;
-    logic HReady;
+    logic HReadyOut;
     logic [1:0] HResp;
     logic [1:0] DmacReq;
     logic Bus_Grant;
@@ -35,7 +35,7 @@ module Dmac_Top_tb;
     Dmac_Top dut (
         .clk(clk), .rst(rst),
         .MRData(MRData), .write(write), .HSel(HSel), .STrans(2'b10),
-        .HWData(HWData), .HAddr(HAddr), .HReadyOut(1'b1), .HResp(HResp),
+        .HWData(HWData), .HAddr(HAddr), .HReady(1'b1), .HResp(HResp),
         .DmacReq(DmacReq), .Bus_Grant(Bus_Grant),
         .MAddress(MAddress), .MWData(MWData), .MBurst_Size(MBurst_Size),
         .MWrite(MWrite), .MTrans(MTrans), .Bus_Req(Bus_Req),
@@ -54,7 +54,7 @@ module Dmac_Top_tb;
         .HREADYIN(1'b1),
         .HWDATA(32'h0),
         .HRDATA(MRData),  // Output to DMA
-        .HREADYOUT(HReady),
+        .HREADYOUT(HReadyOut),
         .HRESP(HResp),
         .HSIZE()
     );

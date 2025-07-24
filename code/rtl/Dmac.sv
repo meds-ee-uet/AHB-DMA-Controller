@@ -18,7 +18,7 @@ module Dmac_Top (
     input  logic [1:0]  STrans,
     input  logic [31:0] HWData,
     input  logic [31:0] HAddr,
-    input  logic        HReadyOut, //Why?
+    input  logic        HReady, 
     input  logic [1:0]  HResp,
 
     // DMA request signals from two sources
@@ -55,7 +55,7 @@ module Dmac_Top (
         .HWData         (HWData),
         .HAddr          (HAddr),
         .MRData         (MRData),
-        .HReadyOut      (HReadyOut),
+        .HReady      (HReady),
         .HResp          (HResp),
         .con_en         (con_en),
         .con_sel        (con_sel),
