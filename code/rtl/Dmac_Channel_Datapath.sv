@@ -99,7 +99,7 @@ module Dmac_Channel_Datapath (
     end
 
     // Comparisons
-    assign tslb = ((Transfer_Size - Burst_Size) < Burst_Size);
+    assign tslb = (Transfer_Size < B_Size);
 
     // Decrement Counter Logic
     logic [31:0] Decrement_Counter;
@@ -113,7 +113,7 @@ module Dmac_Channel_Datapath (
         if (rst)
             Decrement_Counter <= 32'b0;
         else if (count_en)
-            Decrement_Counter <= (Decrement_Counter == 0) ? Burst_Size - 1 : Decremented_Value;
+            Decrement_Counter <= (Decrement_Counter == 0) ? ((tslb) ? 0: Burst_Size-1)  : Decremented_Value;
     end
 
     // Putting Address on AHB Bus

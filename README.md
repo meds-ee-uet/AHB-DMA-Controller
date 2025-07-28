@@ -9,6 +9,10 @@ In a Burst Transfer, data is buffered in a FIFO untill burst size is reached and
 
 ## **DMAC Pinout**
 <div align='center'>
-<img src=''>
+<img width=700px height=550px src='docs/dmac_pinout.png'>
 </div>
+
+
+## **Specifications**
+- 
 

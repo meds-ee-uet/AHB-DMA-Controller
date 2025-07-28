@@ -71,12 +71,14 @@ module channel_ctrl(
             end
 
             WRITE_WAIT: begin
-                if (!readyIn)
+                if (tsz && bsz)
+                    next_state = DISABLED;
+                else if (!readyIn)
                     next_state = WRITE_WAIT;
                 else if (readyIn && !bsz && (M_HResp == 0))
                     next_state = WRITE_WAIT; 
                 else if (readyIn && bsz && (M_HResp == 0))
-                    next_state = ENABLED;
+                    next_state = READ_WAIT;
                 else
                     next_state = WRITE_WAIT;
             end
@@ -142,6 +144,7 @@ module channel_ctrl(
 
                 end else if (bsz && (M_HResp == 0) && readyIn)  begin
                     wr_en = 1;
+                    ts_en = 1;
                     count_en = 1;
                     write    = 1;
                     h_sel    = 1;
@@ -151,7 +154,12 @@ module channel_ctrl(
             end
             
             WRITE_WAIT: begin
-                if (!readyIn) begin
+                if (tsz && bsz) begin
+                    irq = 1;
+                    rd_en = 1;
+                    trigger = 1;
+                    HTrans = IDLE;
+                end else if (!readyIn) begin
                     write     = 1;
                     HTrans    = BUSY;
                 end else if (readyIn && (M_HResp == 0) && !bsz) begin
@@ -164,22 +172,24 @@ module channel_ctrl(
                     HTrans    = SEQ;
                 end
                 else if (readyIn && (M_HResp == 0) && !tslb && bsz) begin
-                    ts_en = 1;
-                    h_sel = 1;
-                    write = 1;
+                    h_sel = 0;
+                    write = 0;
+                    count_en  = 1;
+                    s_en = 1;
                     trigger = 1;
                     rd_en = 1;
-                    HTrans = BUSY;
+                    HTrans    = NON_SEQ;
 
                 end else if (readyIn && (M_HResp == 0) && tslb && bsz) begin
                     burst_en = 1;
                     b_sel = 1;
-                    ts_en = 1;
-                    h_sel = 1;
-                    write = 1;
+                    write = 0;
+                    count_en  = 1;
+                    s_en = 1;
+                    h_sel = 0;
                     trigger = 1;
                     rd_en = 1;
-                    HTrans = BUSY;
+                    HTrans    = NON_SEQ;
                 end
                 
             end

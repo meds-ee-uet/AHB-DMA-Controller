@@ -100,16 +100,13 @@ assign S_HResp  = 2'b00;
             end
 
             WAIT: begin
-                if (!irq && !con_new_sel) begin
-                    con_sel    = 0;
-                    con_en     = 1;
-                    next_state = WAIT;
-                end else if (!irq && con_new_sel) begin
-                    con_sel    = 1;
+                if (!irq) begin
+                    con_sel    = con_new_sel;
                     con_en     = 1;
                     next_state = WAIT;
                 end else if (irq) begin
                     Interrupt  = 1;
+                    con_sel = con_new_sel;
                     next_state = IDLE;
                 end
             end
