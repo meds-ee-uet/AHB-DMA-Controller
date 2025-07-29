@@ -73,35 +73,43 @@ module Dmac_Main_Ctrl(
             end
 
             MSB_REQ: begin
-                if ({C_config, Bus_Grant} == 2'b11) begin
+                if (!irq && ({C_config, Bus_Grant} == 2'b11)) begin
                     Channel_en_1 = 1;
                     con_en       = 0;
                     con_sel      = 1;
                     ReqAck       = 2'b10;
                     next_state   = WAIT;
-                end
-                else
+                end else if (irq && ({C_config, Bus_Grant} == 2'b11)) begin
+                    Interrupt  = 1;
+                    con_sel = 1;
+                    Channel_en_1 = 1;
+                    next_state = IDLE;
+                end else
                     Bus_Req = 1;
             end
 
             LSB_REQ: begin
-                if ({C_config, Bus_Grant} == 2'b11) begin
+                if (!irq && ({C_config, Bus_Grant} == 2'b11)) begin
                     Channel_en_2 = 1;
                     con_en       = 1;
                     con_sel      = 1;
                     ReqAck       = 2'b01;
                     next_state   = WAIT;
-                end
-                else
+                end else if (irq && ({C_config, Bus_Grant} == 2'b11)) begin
+                    Interrupt  = 1;
+                    con_sel = 1;
+                    Channel_en_2 = 1;
+                    next_state = IDLE;
+                end else
                     Bus_Req = 1;
             end
 
             WAIT: begin
-                if ({Bus_Grant, con_new_sel} == 2'b00) begin
+                if (!irq && ({Bus_Grant, con_new_sel} == 2'b00)) begin
                     next_state = MSB_REQ;
                     Channel_en_1 = 0;
                     Bus_Req    = 1;
-                end else if ({Bus_Grant, con_new_sel} == 2'b01) begin
+                end else if (!irq && ({Bus_Grant, con_new_sel} == 2'b01)) begin
                     next_state = LSB_REQ;
                     Channel_en_2 = 0;
                     Bus_Req    = 1;
