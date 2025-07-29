@@ -89,3 +89,62 @@ This DMAC has been designed as to follow a certain pipeline to complete the tran
 6. Corresponding to DmacReq, the channel is enabled i.e. Channel 1 is used for DmacReq[1] and has the highest priority. Whereas, Channel 2 is for DmacReq[0] bit.
 7. After the channel has been enabled, Now the DMAC waits for IRQ which signals transfer completion from the channel's side. During the transfer, it is important to decide which channel should output the data to the master interface. To do that, a mux is used with con_sel signal as selector. This con_sel is also given to a FlipFlop and the output of the FlipFlop is the input to the controller of the DMAC, which informs which channel was enabled previously. 0 means channel 1, 1 means channel 2.
 8. Once IRQ is asserted, DMAC asserts the Interrupt to signal the CPU about the completion of transfer, that means the CPU can take the Bus access.
+
+## DMAC Channel
+### Description: 
+The DMAC (Direct Memory Access Controller) channel is responsible for autonomously transferring data between a source and destination without CPU intervention. It is designed to support both single transfers (one word per transaction) and burst transfers (multiple words per transaction), providing flexibility for various use cases.
+
+Each channel includes a dedicated FIFO buffer, which temporarily holds data during burst operations. Once the data has been successfully transferred, the channel automatically generates an interrupt to notify the CPU that the operation is complete.
+
+### Operation
+
+The DMA channel operates through a **finite state machine (FSM)** that governs the control and flow of data. The following outlines the step-by-step operation:
+
+---
+
+### Configuration
+- When a **transfer request** is received from a peripheral, the CPU configures the DMAC by writing to the following registers:
+  - `SAddr_Reg`: Source memory address
+  - `DAddr_Reg`: Destination memory address
+  - `Size_Reg`: Total number of bytes or words to transfer
+  - `Ctrl_Reg`: Burst size and other control/configuration bits
+
+---
+
+### Start Condition
+- The transfer begins when the **`channel_en`** signal for the selected channel is asserted.
+- The FSM transitions from the **IDLE** state to the **ENABLED** state.
+- During this transition, the following internal registers are loaded from the previously configured values:
+  - `Src_Addr`: Latched source address
+  - `Dst_Addr`: Latched destination address
+  - `Size_Reg`: Size of the transfer
+  - `Burst_Size`: Number of words to be transferred per burst
+
+---
+
+### Data Transfer
+- Once enabled:
+  - The DMA channel issues a **read request** to the source address and increments the source address.
+  - Upon receiving valid data, it stores it in the **FIFO**.
+  - Then, a **write request** is issued to the destination address and destination address is incremented.
+- In **burst mode**, multiple data items are read in chunks, temporarily buffered in the FIFO, and then written sequentially.
+- This process repeats until the **entire configured transfer size** is completed.
+
+---
+
+### Completion
+- After the final data word is transferred:
+  - The FSM returns to the **IDLE** state.
+  - The DMA channel asserts an **interrupt signal** to the CPU to indicate successful completion.
+
+---
+
+### Registers
+
+| Register Name        | Width | Description                                                                 |
+|----------------------|-------|-----------------------------------------------------------------------------|
+| `Src_Addr`           | 32    | Source memory address                                                       |
+| `Dst_Addr`           | 32    | Destination memory address                                                  |
+| `Transfer_Size`      | 32    | Total number of words to transfer                                           |
+| `Burst_Size`         | 32    | Number of words to be transferred per burst                                 |
+| `Decrement_Counter`  | 32    | Tracks the remaining number of data items to be read or written in the current burst. It decrements with each successful transfer and resets to `Burst_Size` at the start of every new read or write burst. |
