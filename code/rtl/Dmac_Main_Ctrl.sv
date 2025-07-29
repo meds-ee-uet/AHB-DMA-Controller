@@ -28,9 +28,9 @@ module Dmac_Main_Ctrl(
     input  logic C_config,
 
     output logic con_sel,
+    output logic Bus_Req,
     output logic HReadyOut,
     output logic [1:0] S_HResp,
-    output logic Bus_Req,
     output logic Interrupt,
     output logic con_en,
     output logic Channel_en_1, Channel_en_2,
@@ -46,9 +46,6 @@ module Dmac_Main_Ctrl(
         else
             current_state <= next_state;
     end
-
-assign HReady = 1'b1;
-assign S_HResp  = 2'b00;
 
     always_comb begin
         // Default outputs
@@ -100,13 +97,28 @@ assign S_HResp  = 2'b00;
             end
 
             WAIT: begin
-                if (!irq) begin
-                    con_sel    = con_new_sel;
+                if ({Bus_Grant, con_new_sel} == 2'b00) begin
+                    next_state = MSB_REQ;
+                    Channel_en_1 = 0;
+                    Bus_Req    = 1;
+                end else if ({Bus_Grant, con_new_sel} == 2'b01) begin
+                    next_state = LSB_REQ;
+                    Channel_en_2 = 0;
+                    Bus_Req    = 1;
+                    con_sel    = 1;
+                end else if (!irq && !con_new_sel) begin
+                    con_sel    = 0;
                     con_en     = 1;
+                    Channel_en_1 = 1;
+                    next_state = WAIT;
+                end else if (!irq && con_new_sel) begin
+                    con_sel    = 1;
+                    con_en     = 1;
+                    Channel_en_2 = 1;
                     next_state = WAIT;
                 end else if (irq) begin
                     Interrupt  = 1;
-                    con_sel = con_new_sel;
+                    con_sel = 1;
                     next_state = IDLE;
                 end
             end

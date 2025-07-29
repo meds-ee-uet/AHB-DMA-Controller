@@ -10,10 +10,12 @@
 
 `timescale 1ns/10ps
 // State Encodings
-parameter DISABLED      = 2'b00;
-parameter ENABLED       = 2'b01;
-parameter READ_WAIT     = 2'b10;
-parameter WRITE_WAIT    = 2'b11;
+parameter DISABLED      = 3'b000;
+parameter ENABLED       = 3'b001;
+parameter READ_WAIT     = 3'b010;
+parameter HOLD_READ     = 3'b011;
+parameter WRITE_WAIT    = 3'b100;
+parameter HOLD_WRITE    = 3'b101;
 
 // HTrans Encodings
 parameter IDLE     = 2'b00;
@@ -62,6 +64,8 @@ module channel_ctrl(
             READ_WAIT: begin
                 if (!readyIn)
                     next_state = READ_WAIT;
+                else if (!channel_en && readyIn) 
+                    next_state = HOLD_READ;
                 else if (readyIn && !bsz && !M_HResp)
                     next_state = READ_WAIT;
                 else if (readyIn && bsz && (M_HResp == 0))
@@ -70,17 +74,39 @@ module channel_ctrl(
                     next_state = READ_WAIT;
             end
 
+            HOLD_READ: begin
+                if (channel_en && bsz) begin
+                    next_state = WRITE_WAIT;
+                end else if (channel_en && !bsz) begin
+                    next_state = READ_WAIT;
+                end else begin
+                    next_state = HOLD_READ;
+                end
+            end
+
             WRITE_WAIT: begin
                 if (tsz && bsz)
                     next_state = DISABLED;
                 else if (!readyIn)
                     next_state = WRITE_WAIT;
+                else if (!channel_en && readyIn)
+                    next_state = HOLD_WRITE; 
                 else if (readyIn && !bsz && (M_HResp == 0))
                     next_state = WRITE_WAIT; 
                 else if (readyIn && bsz && (M_HResp == 0))
                     next_state = READ_WAIT;
                 else
                     next_state = WRITE_WAIT;
+            end
+
+            HOLD_WRITE: begin
+                if (channel_en && !bsz) begin
+                    next_state = WRITE_WAIT;
+                end else if (channel_en && bsz) begin
+                    next_state = WRITE_WAIT;
+                end else begin
+                    next_state = HOLD_WRITE;
+                end
             end
             default: next_state = DISABLED;
         endcase
@@ -134,7 +160,10 @@ module channel_ctrl(
                 if (!readyIn) begin
                     write     = 0;
                     HTrans    = BUSY;
-                end  
+                end else if (!channel_en && readyIn) begin
+                    wr_en = 1;
+                    HTrans = IDLE;
+                end
                 else if (readyIn && (M_HResp == 0) && !bsz)  begin
                     write     = 0;
                     wr_en     = 1;
@@ -151,6 +180,21 @@ module channel_ctrl(
                     d_en     = 1;
                     HTrans    = NON_SEQ;
                 end
+            end
+
+            HOLD_READ: begin
+                if (channel_en && !bsz) begin
+                    count_en = 1;
+                    s_en     = 1;
+                    HTrans   = SEQ;
+                end else if (channel_en && bsz) begin
+                    write = 1;
+                    h_sel = 1;
+                    d_en = 1;
+                    count_en = 1;
+                    HTrans = NON_SEQ;
+                end else
+                    HTrans = IDLE;
             end
             
             WRITE_WAIT: begin
@@ -191,8 +235,23 @@ module channel_ctrl(
                     rd_en = 1;
                     HTrans    = NON_SEQ;
                 end
-                
+            HOLD_WRITE: begin
+                if (channel_en && !bsz) begin
+                    h_sel = 1;
+                    write = 1;
+                    d_en = 1;
+                    count_en = 1;
+                    HTrans = SEQ;
+                end else if (channel_en && bsz) begin
+                    if (tsz) begin
+                        rd_en = 1;
+                        trigger = 1;
+                        irq = 1;
+                        HTrans = IDLE;
+                    end
+                end
             end
+        end
         endcase
     end
 endmodule

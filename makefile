@@ -17,12 +17,7 @@ compile: work
 	vlog -work test/work  $(rtl) $(verif) || { echo "\033[0;31mCompilation Failed!\033[0m"; exit 1; }
 
 simulate: compile
-	vsim -c test/work.Dmac_Top_tb -do "run -all; quit;"
+	vsim -c -suppress vopt-7061 test/work.Dmac_Top_tb -do "run -all; quit;" || { echo "\033[0;31mSimulation Failed!\033[0m"; exit 1; }
 
 wave: compile
-	vsim test/work.Dmac_Top_tb -do "\
-		add wave *; \
-		add wave -position insertpoint sim:/Dmac_Top_tb/dut/channel_en_1; \
-		add wave -position insertpoint sim:/Dmac_Top_tb/dut/channel_en_2; \
-		add wave -position insertpoint sim:/Dmac_Top_tb/dest/mem; \
-		run -all;"
+	vsim -suppress vopt-7061 test/work.Dmac_Top_tb -do "add wave *; run -all;" || { echo "\033[0;31mSimulation (GUI) Failed!\033[0m"; exit 1; }
