@@ -103,7 +103,10 @@ module channel_ctrl(
                 if (channel_en && !bsz) begin
                     next_state = WRITE_WAIT;
                 end else if (channel_en && bsz) begin
-                    next_state = WRITE_WAIT;
+                    if (tsz)
+                        next_state = DISABLED;
+                    else 
+                        next_state = READ_WAIT;
                 end else begin
                     next_state = HOLD_WRITE;
                 end
@@ -206,6 +209,10 @@ module channel_ctrl(
                 end else if (!readyIn) begin
                     write     = 1;
                     HTrans    = BUSY;
+                end else if (!channel_en && readyIn) begin
+                    rd_en = 1;
+                    trigger = 1;
+                    HTrans = IDLE;
                 end else if (readyIn && (M_HResp == 0) && !bsz) begin
                     h_sel = 1;
                     write = 1;
@@ -248,6 +255,16 @@ module channel_ctrl(
                         trigger = 1;
                         irq = 1;
                         HTrans = IDLE;
+                    end else if (tslb) begin
+                        burst_en = 1;
+                        b_sel   = 1;
+                        count_en = 1;
+                        s_en = 1;
+                        HTrans = NON_SEQ;
+                    end else if (!tslb) begin
+                        count_en = 1;
+                        s_en = 1;
+                        HTrans = NON_SEQ;
                     end
                 end
             end
