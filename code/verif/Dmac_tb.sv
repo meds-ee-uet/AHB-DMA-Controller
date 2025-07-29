@@ -128,7 +128,7 @@ module Dmac_Top_tb;
         HWData = 32'h0000_1000; 
 
         @(posedge clk);
-        HWData = 32'h0001_0004;
+        HWData = 32'h0001_0001;
         HSel = 0;
         write = 0;
 
@@ -136,7 +136,13 @@ module Dmac_Top_tb;
         repeat (2) @(posedge clk);
         Bus_Grant = 1;
 
-        repeat (6) @(posedge clk);
+        repeat (10) @(posedge clk);
+        Bus_Grant = 0;
+
+        @(posedge clk);
+        Bus_Grant = 1;
+
+        @(posedge clk);
         Bus_Grant = 0;
 
         repeat (2) @(posedge clk);

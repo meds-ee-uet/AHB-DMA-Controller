@@ -242,6 +242,7 @@ module channel_ctrl(
                     rd_en = 1;
                     HTrans    = NON_SEQ;
                 end
+            end
             HOLD_WRITE: begin
                 if (channel_en && !bsz) begin
                     h_sel = 1;
@@ -266,7 +267,6 @@ module channel_ctrl(
                         s_en = 1;
                         HTrans = NON_SEQ;
                     end
-                end
             end
         end
         endcase
