@@ -255,8 +255,6 @@ module channel_ctrl(
                     HTrans = SEQ;
                 end else if (channel_en && bsz) begin
                     if (tsz) begin
-                        rd_en = 1;
-                        trigger = 1;
                         irq = 1;
                         HTrans = IDLE;
                     end else if (tslb) begin
