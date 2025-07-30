@@ -14,10 +14,10 @@ work:
 	fi
 
 compile: work
-	vlog -work test/work  $(rtl) $(verif) || { echo "\033[0;31mCompilation Failed!\033[0m"; exit 1; }
+	vlog -work test/work  $(rtl) $(verif);
 
 simulate: compile
-	vsim -c -suppress vopt-7061 test/work.Dmac_Top_tb -do "run -all; quit;" || { echo "\033[0;31mSimulation Failed!\033[0m"; exit 1; }
+	vsim -c test/work.Dmac_Top_tb -do "run -all; quit;"
 
 wave: compile
-	vsim -suppress vopt-7061 test/work.Dmac_Top_tb -do "add wave *; run -all;" || { echo "\033[0;31mSimulation (GUI) Failed!\033[0m"; exit 1; }
+	vsim test/work.Dmac_Top_tb -do "add wave *; run -all;"

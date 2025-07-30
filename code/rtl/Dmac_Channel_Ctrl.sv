@@ -10,12 +10,14 @@
 
 `timescale 1ns/10ps
 // State Encodings
-parameter DISABLED      = 3'b000;
-parameter ENABLED       = 3'b001;
-parameter READ_WAIT     = 3'b010;
-parameter HOLD_READ     = 3'b011;
-parameter WRITE_WAIT    = 3'b100;
-parameter HOLD_WRITE    = 3'b101;
+typedef enum logic [2:0] {
+    DISABLED      = 3'b000,
+    ENABLED       = 3'b001,
+    READ_WAIT     = 3'b010,
+    HOLD_READ     = 3'b011,
+    WRITE_WAIT    = 3'b100,
+    HOLD_WRITE    = 3'b101
+} state_t;
 
 // HTrans Encodings
 parameter IDLE     = 2'b00;
@@ -44,7 +46,7 @@ module channel_ctrl(
     output logic       rd_en, wr_en,
     output logic       trigger
 );
-    logic [2:0] current_state, next_state;
+    state_t current_state, next_state;
     // State Register
     always_ff @(posedge clk or posedge rst) begin
         if (rst)
@@ -111,7 +113,7 @@ module channel_ctrl(
                     next_state = HOLD_WRITE;
                 end
             end
-            default: next_state = DISABLED;
+            default: next_state = current_state;
         endcase
     end
 

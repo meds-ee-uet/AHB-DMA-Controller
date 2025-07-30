@@ -76,7 +76,7 @@ module Dmac_Channel (
         .bsz         (bs0),
         .tslb        (tslb),
         .tsz         (ts0),
-        .M_HResp       (M_HResp),
+        .M_HResp     (M_HResp),
         .irq         (irq),
         .HTrans      (HTrans),
         .write       (write),

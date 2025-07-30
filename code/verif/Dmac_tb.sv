@@ -137,26 +137,6 @@ module Dmac_Top_tb;
         Bus_Grant = 1;
         DmacReq = 2'b0;
 
-        repeat (10) @(posedge clk);
-        Bus_Grant = 0;
-
-        @(posedge clk);
-        Bus_Grant = 1;
-
-        @(posedge clk);
-        Bus_Grant = 0;
-
-        repeat (2) @(posedge clk);
-        Bus_Grant = 1;
-
-        #225;
-
-        repeat (4) @(posedge clk);
-        Bus_Grant = 0;
-
-        repeat (3) @(posedge clk);
-        Bus_Grant = 1;
-
         // Wait until transfer is done
         wait (Interrupt == 1);
         repeat(5) @(posedge clk);

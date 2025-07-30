@@ -56,7 +56,9 @@ module Dmac_Main_Ctrl(
         con_sel      = 0;
         Channel_en_1 = 0;
         Channel_en_2 = 0;
+        HReadyOut    = 0;
         ReqAck       = 2'b00;
+        S_HResp      = 2'b00;
         next_state   = current_state;  // Default next state
 
         case (current_state)
@@ -105,16 +107,17 @@ module Dmac_Main_Ctrl(
             end
 
             WAIT: begin
-                if (!irq && ({Bus_Grant, con_new_sel} == 2'b00)) begin
+                if (({Bus_Grant, con_new_sel} == 2'b00)) begin
                     next_state = MSB_REQ;
                     Channel_en_1 = 0;
                     Bus_Req    = 1;
-                end else if (!irq && ({Bus_Grant, con_new_sel} == 2'b01)) begin
+                end else if (({Bus_Grant, con_new_sel} == 2'b01)) begin
                     next_state = LSB_REQ;
                     Channel_en_2 = 0;
                     Bus_Req    = 1;
                     con_sel    = 1;
-                end else if (!irq && !con_new_sel) begin
+                end else
+                 if (!irq && !con_new_sel) begin
                     con_sel    = 0;
                     con_en     = 1;
                     Channel_en_1 = 1;
@@ -124,9 +127,15 @@ module Dmac_Main_Ctrl(
                     con_en     = 1;
                     Channel_en_2 = 1;
                     next_state = WAIT;
-                end else if (irq) begin
+                end else if (irq && ({Bus_Grant, con_new_sel} == 2'b10)) begin
                     Interrupt  = 1;
-                    con_sel = 1;
+                    Channel_en_1 = 1;
+                    con_sel = con_new_sel;
+                    next_state = IDLE;
+                end else if (irq && ({Bus_Grant, con_new_sel} == 2'b11)) begin
+                    Interrupt  = 1;
+                    Channel_en_2 = 1;
+                    con_sel = con_new_sel;
                     next_state = IDLE;
                 end
             end

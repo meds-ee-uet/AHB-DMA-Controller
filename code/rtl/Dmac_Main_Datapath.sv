@@ -146,11 +146,16 @@ assign irq = irq_1 || irq_2;
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
         con_new_sel <= 0;
+        // irq <= 0;
     end
     else if (con_en) begin
         con_new_sel <= con_sel;
     end
+    // irq <= irq_1 || irq_2;
+
 end
+
+
 
     
 endmodule
