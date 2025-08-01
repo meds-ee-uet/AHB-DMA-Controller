@@ -10,7 +10,8 @@
     - [Request and Response Interface](#request-and-response-interface)
     - [Control and Interrupt Interface](#control-and-interrupt-interface)
     - [Master Interface](#master-interface)
-  - [Working](#working)
+  - [Working Pipeline](#working-pipeline)
+  - 
 - [DMAC Channel](#dmac-channel)
   - [Description](#description)
   - [Operation](#operation)
@@ -53,47 +54,48 @@ In a Burst Transfer, data is buffered in a FIFO untill burst size is reached and
 
 ### **Block Diagram/Pinout**
 <div align='center'>
-<img width=700px height=550px src='docs/dmac_pinout.png'>
+<img width=700px height=500px src='docs/DMAC_pinout.png'>
 </div>
 
 ### **Signals:**
 #### ***Slave Interface***
-|Signals|Type|Purpose|
-|-------|----|-------|
-|HWData|Input|Data to be processed/stored by the slave interface|
-|HAddr|Input|Address to store data in slave|
-|HSel|Input|Tells the Slave that it's been selected as slave for a transaction|
-|Write|Input|Tells the nature of the transfer|
-|STrans|Input|Tells the state of the current request on the bus (Encodings: Idle, Busy, Seq, Non-Seq)|
-|HReadyOut|Output|Signals to master that the transfer is complete|
-|S_HResp|Output|Tells master if the transfer was successful or not|
+|Signals|Type|Width|Purpose|
+|-------|----|-----|-------|
+|`HWData`|Input|32|Data to be processed/stored by the slave interface|
+|`HAddr`|Input|32|Address to store data in slave|
+|`HSel`|Input|1|Tells the Slave that it's been selected as slave for a transaction|
+|`Write`|Input|1|Tells the nature of the transfer|
+|`STrans`|Input|2|Tells the state of the current request on the bus (Encodings: Idle, Busy, Seq, Non-Seq)|
+|`HReadyOut`|Output|1|Signals to master that the transfer is complete|
+|`S_HResp`|Output|2|Tells master if the transfer was successful or not|
 
 #### ***Request and Response Interface***
-|Signals|Type|Purpose|
-|-------|----|-------|
-|DmacReq|Input|Each bit indicates a request from each peripheral|
-|ReqAck|Output|Request Acknowledgement Signals to each peripheral|
+|`Signals`|Type|Width|Purpose|
+|-------|----|-------|-------|
+|`DmacReq`|Input|2|Each bit indicates a request from each peripheral|
+|`ReqAck`|Output|2|Request Acknowledgement Signals to each peripheral|
 
 #### ***Control and Interrupt Interface***
-|Signals|Type|Purpose|
-|-------|----|-------|
-|Hold|Output|Signals CPU to stop and configure the DMAC Slave|
-|Interrupt|Output|Signals to CPU that transfer is complete|
+|Signals|Type|Width|Purpose|
+|-------|----|-----|-------|
+|`Hold`|Output|1|Signals CPU to stop and configure the DMAC Slave|
+|`Interrupt`|Output|1|Signals to CPU that transfer is complete|
 
 #### ***Master Interface***
-|Signals|Type|Purpose|
-|-------|----|-------|
-|Bus_Req|Output|Requests Bus' Arbiter to become Bus Master (Remains asserted until Bus_Grant is asserted)|
-|Bus_Grant|Input|Signals DMAC that bus access is granted to it|
-|MWData|Output|Data to write to Slave as a master|
-|MAddress|Output|Address to Slave as a master|
-|MTrans|Output|Tells the state of the current transfer Request on bus as a master|
-|MWrite|Output|As a master, tells the slave the nature of the transfer Request|
-|MRData|Input|Data Read from the Slave|
-|HReady|Input|Signals DMAC that the transfer request is complete|
-|M_HResp|Input|From slave to master, tells if the transfer was successful or not|
-
-### **Working:**
+|Signals|Type|Width|Purpose|
+|-------|----|-----|-------|
+|`Bus_Req`|Output|1|Requests Bus' Arbiter to become Bus Master (Remains asserted until Bus_Grant is asserted)|
+|`Bus_Grant`|Input|1|Signals DMAC that bus access is granted to it|
+|`MWData`|Output|32|Data to write to Slave as a master|
+|`MAddress`|Output|32|Address to Slave as a master|
+|`MTrans`|Output|2|Tells the state of the current transfer Request on bus as a master|
+|`MWrite`|Output|1|As a master, tells the slave the nature of the transfer Request|
+|`MRData`|Input|32|Data Read from the Slave|
+|`HReady`|Input|1|Signals DMAC that the transfer request is complete|
+|`M_HResp`|Input|2|From slave to master, tells if the transfer was successful or not|
+|`MHSize`|Output|2|Tells the size of the single transfer i.e. `byte`, `halfword` or `word`|
+|`MWSTRB`|Output|4|`4` bit signal, each bit represents a valid `byte` in a `word`|
+### **Working Pipeline:**
 This DMAC has been designed as to follow a certain pipeline to complete the transfer. The pipeline is as follows:
 <div align='center'>
     <img src='docs/DMAC_Pipeline.png'>
@@ -128,6 +130,36 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 <div align='center'>
   <img src='docs/DMAC_datapath.png'>
 </div>
+
+### **DMAC Controller**
+#### **Internal Signals**
+|Signal|Type|Purpose|
+|------|----|-------|
+|`irq`|Input|An `OR` of `irq_1` and `irq_2` of both channels|
+|`con_sel`|Output|Selector of a `mux` to output the data from the enabled channel|
+|`new_con_sel`|Input|Returning from a FlipFlop used to store the previous value of `con_sel` signal|
+|`Bus_Req`|Output|Signal to request access of the bus from the bus' Interconnect|
+|`hold`|Output|Used to signal the CPU to configure the Slave Interface|
+|`Interrupt`|Output|Signals the Completion of the current transfer|
+|`c_config`|Input|When asserted, tells that the slave interface has been configured|
+|`con_en`|Output|Enable signal for the FlipFlop to store `con_sel`|
+|`channel_en_1`|Output|Enable for `Channel 1`|
+|`channel_en_2`|Output|Enable for `Channel 2`|
+|`Bus_Grant`|Input|Signals that the bus Request was acknowledged and bus access has been transferred|
+|`DmacReq`|Input|Each bit representes a request to DMAC for data transfer from each peripheral|
+|`ReqAck`|Output|Each bit is an Request Ackhnowledgment signal for each peripheral|
+#### **State Transition Graph:**
+<div align='center'>
+  <img src='docs/DMAC_main_stg.png'>
+</div>
+
+#### **States:**
+|State|Purpose|
+|-----|-------|
+|`Idle`|The which indicates the DMAC is not handling any Requests|
+|`MSB Req`|State indicating that the peripheral with a higher priority has made the request|
+|`LSB`|State indicating that the peripheral with a lower priority has made the request|
+|`Wait`|A wait state until the transfer is complete|
 
 ## DMAC Channel
 ### Description: 
