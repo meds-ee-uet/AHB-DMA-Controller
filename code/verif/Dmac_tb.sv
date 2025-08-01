@@ -62,7 +62,7 @@ module Dmac_Top_tb;
         .HREADYOUT(HReadyOut),
         .HRESP(HResp),
         .HSIZE(),
-        .MWStrb()
+        .WSTRB()
     );
 
     // Mock destination peripheral (write to memory)
@@ -79,12 +79,16 @@ module Dmac_Top_tb;
         .HREADYOUT(),
         .HRESP(),
         .HSIZE(),
-        .MWStrb(MWStrb)
+        .WSTRB(MWStrb)
     );
 
     always @(Interrupt) begin
         $display("Time = %0t ps, Interrupt changed to %b", $time, Interrupt);
     end
+
+    int passed = 0;
+    int failed = 0;
+
     // Stimulus
     initial begin
         // Initial state
@@ -97,24 +101,9 @@ module Dmac_Top_tb;
         DmacReq = 0;
         Bus_Grant = 0;
 
-        source.mem[0] = 32'hAABBCCDD;
-        source.mem[1] = 32'h11223344;
-        source.mem[2] = 32'h55667788;
-        source.mem[3] = 32'h99AABBCC;
-        source.mem[4] = 32'h123;
-        source.mem[5] = 32'h456;
-        source.mem[6] = 32'h1;
-        source.mem[7] = 32'h2;
-        source.mem[8] = 32'h3;
-        source.mem[9] = 32'h4;
-        source.mem[10] = 32'h5;
-        source.mem[11] = 32'h6;
-        source.mem[12] = 32'h7;
-        source.mem[13] = 32'h8;
-        source.mem[14] = 32'h9;
-        source.mem[15] = 32'ha;
-        source.mem[16] = 32'hb;
-        source.mem[17] = 32'hc;
+        for (int i = 0; i < 72; i++) begin
+            source.mem[i] = i+i;
+        end
 
         // Wait a few cycles
         repeat (5) @(posedge clk);
@@ -140,10 +129,11 @@ module Dmac_Top_tb;
 
         @(posedge clk);
         HWData = 32'h0001_0006; // Control register
-        temp_hsize = HWDATA[7:4];
         HSel = 0;
         write = 0;
 
+        @(posedge clk);
+        temp_hsize = HWData[7:4];
         case (temp_hsize)
             2'b00: begin  // Byte
                 case (temp_src_addr[1:0])
@@ -166,7 +156,7 @@ module Dmac_Top_tb;
         endcase
 
         // Grant bus to DMA
-        repeat (2) @(posedge clk);
+        @(posedge clk);
         Bus_Grant = 1;
         // DmacReq = 2'b0;
 
@@ -181,18 +171,27 @@ module Dmac_Top_tb;
     end
 
 task monitor(input logic [31:0] transfer_size);
-    automatic int passed = 0;
-    automatic int failed = 0;
-    for(int i = 0; i < 1024; i++) begin
-        if (source.mem[i] == dest.mem[i]) begin
-            $display("\033[1;32mPASS: {Source[%-2d] = %x} == {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
-            passed += 1;
-        end else begin
-            $display("\033[1;31mFAIL: {Source[%-2d] = %x} != {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
-            failed += 1;
+    for(int i = 0; i < 18; i++) begin
+        $display("\033[1;36m---------Word No. %-2d---------\033[0m", i);
+        for (int j = 0; j < 4; j++) begin
+            if (temp_Strb[0])
+                check_byte(j+(i*4));
+            else
+                $display("\033[1;35mInvalid Byte\033[0m");
+
         end
     end
     $display("\033[1;35mTest Cases:\033[0m\n    \033[1;32mPassed = %d\033[0m, \033[1;31mFailed = %d\033[0m", passed, failed);
+endtask
+
+task check_byte(input int i);
+    if (source.mem[i] == dest.mem[i]) begin
+        $display("\033[1;32mPASS: {Source[%-2d] = %x} == {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
+        passed += 1;
+    end else begin
+        $display("\033[1;31mFAIL: {Source[%-2d] = %x} != {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
+        failed += 1;
+    end
 endtask
 
 endmodule
