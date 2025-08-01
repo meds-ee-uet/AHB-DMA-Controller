@@ -42,7 +42,7 @@ module channel_ctrl(
     output logic [1:0] HTrans,
     output logic       write,
     output logic       b_sel, d_sel, t_sel, s_sel, h_sel,
-    output logic       d_en, s_en, ts_en, burst_en, count_en,
+    output logic       d_en, s_en, ts_en, burst_en, count_en, sz_en,
     output logic       rd_en, wr_en,
     output logic       trigger
 );
@@ -131,6 +131,7 @@ module channel_ctrl(
         ts_en     = 0;
         burst_en  = 0;
         count_en  = 0;
+        sz_en     = 0;
         rd_en     = 0;
         wr_en     = 0;
         trigger   = 0;
@@ -145,8 +146,12 @@ module channel_ctrl(
                     burst_en  = 1;
                     s_en      = 1;
                     d_en      = 1;
+                    sz_en     = 1;
                     ts_en     = 1;
                     HTrans    = IDLE;
+                end
+                if (tslb) begin
+                    b_sel = 1;
                 end
             end
 

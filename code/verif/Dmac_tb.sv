@@ -75,6 +75,9 @@ module Dmac_Top_tb;
         .HSIZE()
     );
 
+    always @(Interrupt) begin
+        $display("Time = %0t ps, Interrupt changed to %b", $time, Interrupt);
+    end
     // Stimulus
     initial begin
         // Initial state
@@ -119,7 +122,7 @@ module Dmac_Top_tb;
         HAddr = 32'h0000_0000;  // Size Reg  
         @(posedge clk);
         HAddr = 32'h0000_0004;  // Source
-        HWData = 32'd18;
+        HWData = 32'd16;
         @(posedge clk);
         HAddr = 32'h0000_0008;  // Destination
         HWData = 32'h0000_0000; 
@@ -128,41 +131,22 @@ module Dmac_Top_tb;
         HWData = 32'h0000_1000; 
 
         @(posedge clk);
-        HWData = 32'h0001_0004;
+        HWData = 32'h0001_0006;
         HSel = 0;
         write = 0;
 
         // Grant bus to DMA
         repeat (2) @(posedge clk);
         Bus_Grant = 1;
-        DmacReq = 2'b0;
-
-        repeat (10) @(posedge clk);
-        Bus_Grant = 0;
-
-        @(posedge clk);
-        Bus_Grant = 1;
-
-        @(posedge clk);
-        Bus_Grant = 0;
-
-        repeat (2) @(posedge clk);
-        Bus_Grant = 1;
-
-        #225;
-
-        repeat (4) @(posedge clk);
-        Bus_Grant = 0;
-
-        repeat (3) @(posedge clk);
-        Bus_Grant = 1;
+        // DmacReq = 2'b0;
 
         // Wait until transfer is done
         wait (Interrupt == 1);
-        repeat(5) @(posedge clk);
+        repeat(2) @(posedge clk)
+        $display("Time = %0t ps, Interrupt asserted!", $time);
         // Verify destination memory
         $display("\033[1;36mDMA transfer completed. Checking destination memory...\033[0m");
-        monitor(18);
+        monitor(16);
         $stop;
     end
 

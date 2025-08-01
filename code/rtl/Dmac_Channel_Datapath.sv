@@ -23,6 +23,7 @@ module Dmac_Channel_Datapath (
     input  logic        s_en,
     input  logic        d_en,
     input  logic        ts_en,
+    input  logic        sz_en,
     input  logic        burst_en,
     input  logic        count_en,
     input  logic        h_sel,
@@ -35,6 +36,7 @@ module Dmac_Channel_Datapath (
     input  logic [31:0] T_Size,
     input  logic [31:0] B_Size,
     input  logic [31:0] R_Data,
+    input  logic [1:0]  HSize,
 
     output logic        bs0,
     output logic        tslb,
@@ -42,7 +44,8 @@ module Dmac_Channel_Datapath (
     output logic        fifo_full,
     output logic        fifo_empty,
     output logic [31:0] MAddress,
-    output logic [31:0] MWData
+    output logic [31:0] MWData,
+    output logic [3:0]  MWStrb
 );
 
     // Registers
@@ -95,7 +98,7 @@ module Dmac_Channel_Datapath (
             Burst_Size <= 32'b0;
         end
         else if (burst_en)
-            Burst_Size <= b_sel ? 1 : B_Size;
+            Burst_Size <= (B_Size == 0)? 1: (b_sel ? 1 : B_Size);
     end
 
     // Comparisons
@@ -116,6 +119,7 @@ module Dmac_Channel_Datapath (
             Decrement_Counter <= (Decrement_Counter == 0) ? ((tslb) ? 0: Burst_Size-1)  : Decremented_Value;
     end
 
+
     // Putting Address on AHB Bus
     assign MAddress = h_sel ? (Dst_Addr) : (Src_Addr);
 
@@ -134,12 +138,50 @@ module Dmac_Channel_Datapath (
     );
 
     // Connect MWData only when triggered
-    always_comb begin
-        if (trigger)
-            MWData = fifo_out;
-        else 
-            MWData = 32'b0;
+    logic [1:0] HSize_Reg;
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            HSize_Reg <= 0;
+        end
+        else if (sz_en) begin
+            HSize_Reg <= HSize;
+        end
     end
+
+    always_comb begin
+        if (trigger) begin
+            MWData = fifo_out;  
+
+            case (HSize)
+                2'b00: begin  // Byte
+                    case (Src_Addr[1:0])
+                        2'b00: MWStrb = 4'b0001;
+                        2'b01: MWStrb = 4'b0010;
+                        2'b10: MWStrb = 4'b0100;
+                        2'b11: MWStrb = 4'b1000;
+                        default: MWStrb = 4'b0000;
+                    endcase
+                end
+
+                2'b01: begin  // Halfword
+                    case (Src_Addr[1:0])
+                        2'b00: MWStrb = 4'b0011;  
+                        2'b10: MWStrb = 4'b1100;  
+                        default: MWStrb = 4'b0000; 
+                    endcase
+                end
+
+                2'b10: MWStrb = 4'b1111;  // Word — all bytes active
+
+                default: MWStrb = 4'b0000;
+            endcase
+        end else begin
+            MWData  = 32'b0;
+            MWStrb  = 4'b0000;
+        end
+    end
+
+
 
     assign bs0 = (Decrement_Counter == 0);
     assign ts0 = (Transfer_Size == 0);

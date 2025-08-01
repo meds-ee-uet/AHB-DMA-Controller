@@ -124,7 +124,6 @@ module dmac_channel_tb;
         // Start DMA
         @(posedge clk);
         channel_en = 1;
-
         // Wait for transfer to complete
         wait (irq == 1);
         $display("DMA Transfer Completed.");

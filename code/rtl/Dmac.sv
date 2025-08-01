@@ -37,6 +37,7 @@ module Dmac_Top (
     output logic [3:0]  MBurst_Size,
     output logic        MWrite,
     output logic [1:0]  MTrans,
+    output logic [3:0]  MWStrb,
 
     // Control/Status
     output logic        Bus_Req,
@@ -73,7 +74,8 @@ module Dmac_Top (
         .MWData         (MWData),
         .MBurst_Size    (MBurst_Size),
         .MWrite         (MWrite),
-        .MTrans         (MTrans)
+        .MTrans         (MTrans),
+        .MWStrb         (MWStrb)
     );
 
     // Instantiate Controller
