@@ -33,6 +33,7 @@ module Dmac_Main_Datapath(
     output logic [31:0] MWData,
     output logic [3:0] MBurst_Size,
     output logic MWrite,
+    output logic [3:0] MWStrb,
     output logic [1:0] MTrans
 );
 
@@ -89,6 +90,7 @@ logic write_1;
 logic [1:0]  MTrans_1;
 logic [31:0] MAddress_1;
 logic [31:0] MWData_1;
+logic [3:0] MWStrb_1;
 
 Dmac_Channel channel_1 (
     .clk(clk),
@@ -101,12 +103,14 @@ Dmac_Channel channel_1 (
     .T_Size(Size_Reg),
     .B_Size({{28{1'b0}}, {Ctrl_Reg[3:0]}}),
     .R_Data(MRData),
+    .HSize(Ctrl_Reg[4:5]),
 
     .irq(irq_1),
     .write(write_1),
     .HTrans(MTrans_1),
     .MAddress(MAddress_1),
-    .MWData(MWData_1)
+    .MWData(MWData_1),
+    .MWStrb(MWStrb_1)
 );
 
 // Channel 2 signals
@@ -116,6 +120,7 @@ logic write_2;
 logic [1:0]  MTrans_2;
 logic [31:0] MAddress_2;
 logic [31:0] MWData_2;
+logic [3:0] MWStrb_2;
 
 Dmac_Channel channel_2 (
     .clk(clk),
@@ -128,12 +133,14 @@ Dmac_Channel channel_2 (
     .T_Size(Size_Reg),
     .B_Size({{28{1'b0}}, {Ctrl_Reg[3:0]}}) ,
     .R_Data(MRData),
+    .HSize(Ctrl_Reg[4:5]),
 
     .irq(irq_2),
     .write(write_2),
     .HTrans(MTrans_2),
     .MAddress(MAddress_2),
-    .MWData(MWData_2)
+    .MWData(MWData_2),
+    .MWStrb(MWStrb_2)
 );
 
 assign MAddress = con_sel? MAddress_2 : MAddress_1;
@@ -142,6 +149,7 @@ assign MTrans = con_sel? MTrans_2 : MTrans_1;
 assign MBurst_Size = Ctrl_Reg[3:0];
 assign MWrite = con_sel? write_2 : write_1;
 assign irq = irq_1 || irq_2; 
+assign MWStrb = con_sel? MWStrb_2 : MWStrb_1;
 
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
