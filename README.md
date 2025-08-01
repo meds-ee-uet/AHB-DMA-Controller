@@ -1,5 +1,24 @@
 # ***AHB Direct Access Memory Controller (DMAC)***
 
+## **Table of Contents:**
+- [Introduction](#introduction)
+- [Specifications](#specifications)
+- [DMAC](#dmac)
+  - [Block Diagram/Pinout](#block-diagrampinout)
+  - [Signals](#signals)
+    - [Slave Interface](#slave-interface)
+    - [Request and Response Interface](#request-and-response-interface)
+    - [Control and Interrupt Interface](#control-and-interrupt-interface)
+    - [Master Interface](#master-interface)
+  - [Working](#working)
+- [DMAC Channel](#dmac-channel)
+  - [Description](#description)
+  - [Operation](#operation)
+  - [Configuration](#configuration)
+  - [Start Condition](#start-condition)
+  - [Data Transfer](#completion)
+  - [Registers](#registers)
+
 ## **Introduction**
 Direct Memory Access Controller is used to allow the peripherals to directly transfer data to their required destination i.e. Memory or another peripheral without disrupting the processor. This saves the processor from handling lenghty transfers because when a CPU handles data transfers, it remains blocked and can't perform instructions. This transfer can take many cycles so to avoid this, the transfer is handed over to the DMAC along with the control of the Bus. DMAC handles the transfer while the CPU can deal with other tasks and instructions. A DMAC has two types of transfers:
 - Burst Transfer
@@ -10,22 +29,29 @@ In a Burst Transfer, data is buffered in a FIFO untill burst size is reached and
 ## **Specifications**
 - Number of Channels: 2
 - Fixed Priority Channels
-  - Highest priority: Channel 1
-  - Lowest priortity: Channel 2
-- Highest priority to DMAC[1] Request - Assigned Channel 1
+  - Highest priority: `Channel 1`
+  - Lowest priortity: `Channel 2`
+- Maximum Burst Transfer Capability: `16 beats`
+- Highest priority to `DmacReq[1]` Request - Assigned `Channel 1`
 - FIFO depth in Each Channel: 16 words
 - Supported Peripherals/Slaves: 2
 - Capable of Burst and Single transfer
 - Slave Interface: For DMAC Configuration
   - 4 32-bit Registers:
-    - Control (Ctrl) Register
-    - Size Register
-    - Source Address (SAddr) Register
-    - Destination Address (DAddr) Register
-  - Registers are memory mapped
+    - Control Register - `Ctrl_Reg`
+    - Size Register - `Size_Reg`
+    - Source Address Register -  `SAddr_Reg`
+    - Destination Address Register - `DAddr_Reg`
+  - Registers are memory mapped. Offsets are as follows:
+    - `SAddr_Reg`: `0x4`
+    - `DAddr_Reg`: `0x8`
+    - `Size_Reg`: `0x0`
+    - `Ctrl_Reg`: `0xC`
 - Request and Response Interface: For peripherals
 
-## **DMAC Pinout**
+# **DMAC**
+
+### **Block Diagram/Pinout**
 <div align='center'>
 <img width=700px height=550px src='docs/dmac_pinout.png'>
 </div>
