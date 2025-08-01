@@ -18,12 +18,14 @@ module Dmac_Channel (
     input  logic [31:0] T_Size,
     input  logic [31:0] B_Size,
     input  logic [31:0] R_Data,
+    input  logic [1:0]  HSize,
 
     output logic        irq,
     output logic        write,
     output logic [1:0]  HTrans,
     output logic [31:0] MAddress,
-    output logic [31:0] MWData
+    output logic [31:0] MWData,
+    output logic  [3:0] MWStrb
 );
 
     // Internal wires

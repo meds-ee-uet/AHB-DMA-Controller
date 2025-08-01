@@ -103,7 +103,7 @@ Dmac_Channel channel_1 (
     .T_Size(Size_Reg),
     .B_Size({{28{1'b0}}, {Ctrl_Reg[3:0]}}),
     .R_Data(MRData),
-    .HSize(Ctrl_Reg[4:5]),
+    .HSize(Ctrl_Reg[5:4]),
 
     .irq(irq_1),
     .write(write_1),
@@ -133,7 +133,7 @@ Dmac_Channel channel_2 (
     .T_Size(Size_Reg),
     .B_Size({{28{1'b0}}, {Ctrl_Reg[3:0]}}) ,
     .R_Data(MRData),
-    .HSize(Ctrl_Reg[4:5]),
+    .HSize(Ctrl_Reg[5:4]),
 
     .irq(irq_2),
     .write(write_2),

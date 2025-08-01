@@ -122,7 +122,7 @@ module Dmac_Top_tb;
         HAddr = 32'h0000_0000;  // Size Reg  
         @(posedge clk);
         HAddr = 32'h0000_0004;  // Source
-        HWData = 32'd16;
+        HWData = 32'd10;
         @(posedge clk);
         HAddr = 32'h0000_0008;  // Destination
         HWData = 32'h0000_0000; 
@@ -146,7 +146,7 @@ module Dmac_Top_tb;
         $display("Time = %0t ps, Interrupt asserted!", $time);
         // Verify destination memory
         $display("\033[1;36mDMA transfer completed. Checking destination memory...\033[0m");
-        monitor(16);
+        monitor(10);
         $stop;
     end
 
