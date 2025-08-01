@@ -10,7 +10,7 @@
 // Date: July 23rd, 2025
 
 module mock_ahb_peripheral #(
-    parameter MEM_DEPTH = 256
+    parameter MEM_DEPTH = 1024
 )(
     input  logic        HCLK,
     input  logic        HRESET,
@@ -22,6 +22,7 @@ module mock_ahb_peripheral #(
     input  logic        HWRITE,
     input  logic [2:0]  HSIZE,
     input  logic [31:0] HWDATA,
+    input  logic [3:0]  WSTRB,
     output logic [31:0] HRDATA,
     input  logic        HREADYIN,
     output logic        HREADYOUT,
@@ -29,7 +30,7 @@ module mock_ahb_peripheral #(
 );
 
     // Memory array
-    logic [31:0] mem [0:MEM_DEPTH-1];
+    logic [7:0] mem [0:MEM_DEPTH-1];
 
     // Internal latched control signals (captured during address phase)
     logic [31:0] latched_addr;
@@ -40,7 +41,7 @@ module mock_ahb_peripheral #(
 
     // Word-aligned address (256 x 32-bit memory = 8-bit address)
     logic [7:0] addr_index;
-    assign addr_index = latched_addr[9:2];
+    assign addr_index = latched_addr[9:0];
 
     // Peripheral is always ready and always responds OKAY
     assign HREADYOUT = 1'b1;
@@ -66,14 +67,21 @@ module mock_ahb_peripheral #(
     // Data Phase: Perform write
     always_ff @(posedge HCLK) begin
         if (latched_valid && latched_sel && latched_write) begin
-            mem[addr_index] <= HWDATA;
+            if (WSTRB[0])
+                mem[addr_index] <= HWDATA[7:0];
+            if (WSTRB[1])
+                mem[addr_index+1] <= HWDATA[15:8];
+            if (WSTRB[2])
+                mem[addr_index+2] <= HWDATA[23:16];
+            if (WSTRB[1])
+                mem[addr_index+3] <= HWDATA[31:24];
         end
     end
 
     // Data Phase: Perform read (combinational)
     always_comb begin
         if (latched_valid && latched_sel && !latched_write) begin
-            HRDATA = mem[addr_index];
+            HRDATA = {mem[addr_index+3], mem[addr_index+2], mem[addr_index+1], mem[addr_index]};
         end else begin
             HRDATA = 32'd0;
         end

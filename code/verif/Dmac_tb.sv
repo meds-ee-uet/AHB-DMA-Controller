@@ -26,8 +26,13 @@ module Dmac_Top_tb;
     logic [3:0]  MBurst_Size;
     logic MWrite;
     logic [1:0] MTrans;
+    logic [3:0] MWStrb;
     logic Bus_Req, Interrupt;
     logic [1:0] ReqAck;
+
+    logic [31:0] temp_src_addr;
+    logic [1:0]  temp_hsize;
+    logic [3:0]  temp_Strb;
 
     // Clock
     always #5 clk = ~clk;
@@ -39,7 +44,7 @@ module Dmac_Top_tb;
         .DmacReq(DmacReq), .Bus_Grant(Bus_Grant), .HReadyOut(), .S_HResp(),
         .MAddress(MAddress), .MWData(MWData), .MBurst_Size(MBurst_Size),
         .MWrite(MWrite), .MTrans(MTrans), .Bus_Req(Bus_Req),
-        .Interrupt(Interrupt), .ReqAck(ReqAck)
+        .Interrupt(Interrupt), .ReqAck(ReqAck), .MWStrb(MWStrb)
     );
 
 
@@ -56,7 +61,8 @@ module Dmac_Top_tb;
         .HRDATA(MRData),  // Output to DMA
         .HREADYOUT(HReadyOut),
         .HRESP(HResp),
-        .HSIZE()
+        .HSIZE(),
+        .MWStrb()
     );
 
     // Mock destination peripheral (write to memory)
@@ -72,7 +78,8 @@ module Dmac_Top_tb;
         .HRDATA(),        // Not used
         .HREADYOUT(),
         .HRESP(),
-        .HSIZE()
+        .HSIZE(),
+        .MWStrb(MWStrb)
     );
 
     always @(Interrupt) begin
@@ -119,21 +126,44 @@ module Dmac_Top_tb;
         // Program DMA channel via CPU-like interface
         @(posedge clk);
         HSel = 1; write = 1;
-        HAddr = 32'h0000_0000;  // Size Reg  
+        HAddr = 32'h0000_0000;    
         @(posedge clk);
-        HAddr = 32'h0000_0004;  // Source
-        HWData = 32'd10;
+        HAddr = 32'h0000_0004;  
+        HWData = 32'd10;        // Size Reg
         @(posedge clk);
-        HAddr = 32'h0000_0008;  // Destination
-        HWData = 32'h0000_0000; 
+        HAddr = 32'h0000_0008;  
+        HWData = 32'h0000_0000; // Source
+        temp_src_addr = HWData;
         @(posedge clk);
-        HAddr = 32'h0000_000C;  // Control register 
-        HWData = 32'h0000_1000; 
+        HAddr = 32'h0000_000C;  
+        HWData = 32'h0000_1000; // Destination
 
         @(posedge clk);
-        HWData = 32'h0001_0006;
+        HWData = 32'h0001_0006; // Control register
+        temp_hsize = HWDATA[7:4];
         HSel = 0;
         write = 0;
+
+        case (temp_hsize)
+            2'b00: begin  // Byte
+                case (temp_src_addr[1:0])
+                    2'b00: temp_Strb = 4'b0001;
+                    2'b01: temp_Strb = 4'b0010;
+                    2'b10: temp_Strb = 4'b0100;
+                    2'b11: temp_Strb = 4'b1000;
+                    default: temp_Strb = 4'b0000;
+                endcase
+            end
+            2'b01: begin  // Halfword
+                case (temp_src_addr[1:0])
+                    2'b00: temp_Strb = 4'b0011;  
+                    2'b10: temp_Strb = 4'b1100;  
+                    default: temp_Strb = 4'b0000; 
+                endcase
+            end
+            2'b10: temp_Strb = 4'b1111;  // Word — all bytes active
+            default: temp_Strb = 4'b0000;
+        endcase
 
         // Grant bus to DMA
         repeat (2) @(posedge clk);
@@ -153,7 +183,7 @@ module Dmac_Top_tb;
 task monitor(input logic [31:0] transfer_size);
     automatic int passed = 0;
     automatic int failed = 0;
-    for(int i = 0; i < transfer_size; i++) begin
+    for(int i = 0; i < 1024; i++) begin
         if (source.mem[i] == dest.mem[i]) begin
             $display("\033[1;32mPASS: {Source[%-2d] = %x} == {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
             passed += 1;

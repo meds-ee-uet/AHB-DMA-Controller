@@ -64,7 +64,8 @@ module Dmac_Channel (
         .fifo_full   (fifo_full),
         .fifo_empty  (fifo_empty),
         .MAddress    (MAddress),
-        .MWData      (MWData)
+        .MWData      (MWData),
+        .MWStrb      (MWStrb)
     );
 
     // Instantiate the controller
