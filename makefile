@@ -14,10 +14,10 @@ work:
 	fi
 
 compile: work
-	vlog -work test/work  $(rtl) $(verif);
+	vlog -suppress vopt-7061 -work test/work  $(rtl) $(verif);
 
 simulate: compile
-	vsim -c test/work.Dmac_Top_tb -do "run -all; quit;"
+	vsim -suppress vopt-7061 -c test/work.Dmac_Top_tb -do "run -all; quit;"
 
 wave: compile
 	vsim test/work.Dmac_Top_tb -do "add wave *; run -all;"

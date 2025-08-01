@@ -148,6 +148,9 @@ module channel_ctrl(
                     ts_en     = 1;
                     HTrans    = IDLE;
                 end
+                if (tslb) begin
+                    b_sel = 1;
+                end
             end
 
             ENABLED: begin

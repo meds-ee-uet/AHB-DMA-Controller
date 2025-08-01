@@ -95,7 +95,7 @@ module Dmac_Channel_Datapath (
             Burst_Size <= 32'b0;
         end
         else if (burst_en)
-            Burst_Size <= b_sel ? 1 : B_Size;
+            Burst_Size <= (B_Size == 0)? 1: (b_sel ? 1 : B_Size);
     end
 
     // Comparisons
