@@ -111,7 +111,7 @@ module Dmac_Top_tb;
 
         // Request from Peripheral 
         @(posedge clk);
-        DmacReq = 2'b01;
+        DmacReq = 2'b11;
         // Program DMA channel via CPU-like interface
         @(posedge clk);
         HSel = 1; write = 1;
@@ -121,14 +121,14 @@ module Dmac_Top_tb;
         HWData = 32'd18;        // Size Reg
         @(posedge clk);
         HAddr = 32'h0000_0008;  
-        HWData = 32'h0000_0003; // Source
+        HWData = 32'h0000_0000; // Source
         temp_src_addr = HWData;
         @(posedge clk);
         HAddr = 32'h0000_000C;  
         HWData = 32'h0000_1000; // Destination
 
         @(posedge clk);
-        HWData = 32'h0001_0004; // Control register
+        HWData = 32'h0001_0024; // Control register
         HSel = 0;
         write = 0;
 
@@ -159,6 +159,12 @@ module Dmac_Top_tb;
         @(posedge clk);
         Bus_Grant = 1;
         // DmacReq = 2'b0;
+
+        repeat(10) @(posedge clk);
+        Bus_Grant = 0;
+
+        repeat(2) @(posedge clk);
+        Bus_Grant = 1; 
 
         // Wait until transfer is done
         wait (Interrupt == 1);

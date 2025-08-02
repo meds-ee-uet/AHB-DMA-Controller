@@ -78,7 +78,7 @@ module Dmac_Main_Ctrl(
                 if (!irq && ({C_config, Bus_Grant} == 2'b11)) begin
                     Channel_en_1 = 1;
                     con_en       = 0;
-                    con_sel      = 1;
+                    con_sel      = 0;
                     ReqAck       = 2'b10;
                     next_state   = WAIT;
                 end else if (irq && ({C_config, Bus_Grant} == 2'b11)) begin

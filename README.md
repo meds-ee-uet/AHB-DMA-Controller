@@ -137,6 +137,7 @@ First of all, peripheral requests for a transfer to DMAC.
 1. Priority is given to the `DmacReq[1]` which Enables `Channel 1` to handle the transfer.
 2. If both bits of DmacReq are asserted, DMAC ignores `DmacReq[0]` signal and doesn't assert its request acknowledge signal `ReqAck[1]`.
 3. `Channel 2` is used for `DmacReq[0]`.
+Depending upon this priority, the state then changes to either `MSB Req` or `LSB Req`.
 
 ---
 
@@ -154,7 +155,7 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 ---
 
 #### **Enabling Channels**
-1. After the DMAC is granted the bus, DMAC asserts the `ReqAck `bit corresponding to the `DmacReq` bit which results in deassertion of `DmacReq` bit by the slave/peripheral.
+1. After the DMAC is granted the bus, DMAC asserts the `ReqAck`bit corresponding to the `DmacReq` bit which results in deassertion of `DmacReq` bit by the slave/peripheral. The state then transits to `Wait`.
 2. Corresponding to `DmacReq`, the channel is enabled i.e. `Channel 1` is used for `DmacReq[1]` and has the highest priority.Whereas, `Channel 2` is for `DmacReq[0]` bit.
 
 ---
@@ -356,3 +357,49 @@ Here's a table to link each combination of `MWSTRB` to the bytes of a word, indi
 |`Hold Read`|"State indicating that the bus grant was given to the processor during a read operation, and the state remains active until the DMA channel is re-enabled.|
 |`Write Wait`|State indicating that a write operation is going on.|
 |`Hold Write`|"State indicating that the bus grant was given to the processor during a write operation, and the state remains active until the DMA channel is re-enabled.|
+
+## ***Verification and Testing***
+To thoroughly verify the DMAC's functionality, a Mock AHB Peripheral was designed which works just like a normal AHB peripheral and has a 1024 `byte` long register file (`8x1024`) inside it which contains the data to be transferred. Two mock peripherals were instantiated, named source and dest, which behave as the source and destination of the data to be transferred. `transfer_size` was kept at 18 and was initialized with random data in source peripheral and `burst_size` was kept at 4. The first 16 `words` were transferred in 4 bursts of 4 while the remaining 2 `words` were transferred in single mode. All three possible peripheral Requests were passed and in those requests in which `DmacReq[1]` was asserted, it was given priority. All edge cases were tested and passed successfully.
+
+### **Waveforms**
+
+#### DmacReq - 01
+In this image, the `DmacReq` signal was `01`, so `Channel 2` was enabled and Interrupt was generated transfer was complete. The last 2 `word` as seen in the image are transferred via single word transfer while the remaining in bursts. `HSize` was kept as `byte` and the address offset was `3`.
+<div align='center'>
+<img src='docs/tb_01req.png'>
+</div>
+
+All test cases were passed as only those bytes were tested which were valid depending upon the `MWSTRB` signal. If a byte was Invalid, **Invalid Byte** was displayed.
+<div align='center'>
+<img width=300px height=334px src='docs/tc_01req.png'>
+</div>
+
+#### DmacReq - 10
+Here, `HSize` was kept as `halfword` and the address offset was kept at `2`.
+<div align='center'>
+<img src='docs/tb_10req.png'>
+</div>
+All test cases were passed depending upon the `MWSTRB` signal.
+<div align='center'>
+<img width=300px height=334px src='docs/tc_10req.png'>
+</div>
+
+#### DmacReq - 11
+In this case, `HSize` was kept as `word` and the address offset was kept at `0`.
+<div align='center'>
+<img src='docs/tb_11req.png'>
+</div>
+All test cases were passed while expected valid of `MWSTRB` was `1111`.
+<div align='center'>
+<img width=300px height=334px src='docs/tc_11req.png'>
+</div>
+
+#### Bus Grant Deasserted mid transfer
+In this case, `HSize` is still `word` encoded and offset is `0` but bus grant was deasserted mid transfer for 2 clock edges.
+<div align='center'>
+<img src='docs/bg_da.png'>
+</div>
+Even though DMAC was removed as bus master, Transfer resumed after DMAC was again given the access to bus and stopped when transfer was complete.
+<div align='center'>
+<img width=300px height=334px src='docs/bg_da_tc.png'>
+</div>
