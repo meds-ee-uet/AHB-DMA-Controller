@@ -108,13 +108,13 @@ In single mode, one data item is moved at a time. It is used when a peripheral o
 
 ## ***DMAC***
 
-### **Block Diagram/Pinout**
+## **Block Diagram/Pinout**
 <div align='center'>
 <img width=700px height=500px src='docs/DMAC_pinout.png'>
 </div>
 
-### **Signals:**
-#### ***Slave Interface***
+## **Signals:**
+### ***Slave Interface***
 | Signals     | Type   | Width | Purpose                                                                                 |
 | ----------- | ------ | ----- | --------------------------------------------------------------------------------------- |
 | `HWData`    | Input  | 32    | Data to be processed/stored by the slave interface                                      |
@@ -125,19 +125,19 @@ In single mode, one data item is moved at a time. It is used when a peripheral o
 | `HReadyOut` | Output | 1     | Signals to master that the transfer is complete                                         |
 | `S_HResp`   | Output | 2     | Tells master if the transfer was successful or not                                      |
 
-#### ***Request and Response Interface***
+### ***Request and Response Interface***
 | `Signals` | Type   | Width | Purpose                                            |
 | --------- | ------ | ----- | -------------------------------------------------- |
 | `DmacReq` | Input  | 2     | Each bit indicates a request from each peripheral  |
 | `ReqAck`  | Output | 2     | Request Acknowledgement Signals to each peripheral |
 
-#### ***Control and Interrupt Interface***
+### ***Control and Interrupt Interface***
 | Signals     | Type   | Width | Purpose                                          |
 | ----------- | ------ | ----- | ------------------------------------------------ |
 | `Hold`      | Output | 1     | Signals CPU to stop and configure the DMAC Slave |
 | `Interrupt` | Output | 1     | Signals to CPU that transfer is complete         |
 
-#### ***Master Interface***
+### ***Master Interface***
 | Signals     | Type   | Width | Purpose                                                                                   |
 | ----------- | ------ | ----- | ----------------------------------------------------------------------------------------- |
 | `Bus_Req`   | Output | 1     | Requests Bus' Arbiter to become Bus Master (Remains asserted until Bus_Grant is asserted) |
@@ -152,13 +152,13 @@ In single mode, one data item is moved at a time. It is used when a peripheral o
 | `MHSize`    | Output | 2     | Tells the size of the single transfer i.e. `byte`, `halfword` or `word`                   |
 | `MWSTRB`    | Output | 4     | `4` bit signal, each bit represents a valid `byte` in a `word`                            |
 
-### **Working Pipeline:**
+## **Working Pipeline:**
 This DMAC has been designed as to follow a certain pipeline to complete the transfer. The pipeline is as follows:
 <div align='center'>
     <img src='docs/DMAC_Pipeline.png'>
 </div>
 
-#### **Request from Peripheral**
+### **Request from Peripheral**
 First of all, peripheral requests for a transfer to DMAC.
 1. Priority is given to the `DmacReq[1]` which Enables `Channel 1` to handle the transfer.
 2. If both bits of DmacReq are asserted, DMAC ignores `DmacReq[0]` signal and doesn't assert its request acknowledge signal `ReqAck[1]`.
@@ -167,7 +167,7 @@ Depending upon this priority, the state then changes to either `MSB Req` or `LSB
 
 ---
 
-#### **Slave Configuration**
+### **Slave Configuration**
 After the Request, DMAC asserts Hold and waits for CPU to configure the Slave Interface. Along with Hold, DMAC also Requests for Bus. Bus Request remains asserted until Bus is granted.
 1. The Sequence in which slave registers should be configured are:
    1. `Size_Reg`
@@ -180,25 +180,25 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 
 ---
 
-#### **Enabling Channels**
+### **Enabling Channels**
 1. After the DMAC is granted the bus, DMAC asserts the `ReqAck`bit corresponding to the `DmacReq` bit which results in deassertion of `DmacReq` bit by the slave/peripheral. The state then transits to `Wait`.
 2. Corresponding to `DmacReq`, the channel is enabled i.e. `Channel 1` is used for `DmacReq[1]` and has the highest priority.Whereas, `Channel 2` is for `DmacReq[0]` bit.
 
 ---
 
-#### **Transfer Completion and Disabling DMAC**
+### **Transfer Completion and Disabling DMAC**
 1. After the channel has been enabled, Now the DMAC waits for `irq` which signals transfer completion from the channel's side. During the transfer, it is important to decide which channel should output the data to the master interface. To do that, a mux is used with `con_sel` signal as selector. This `con_sel` is also given to a FlipFlop and the output of the FlipFlop, `new_con_sel` is the input to the controller of the DMAC, which informs which channel was enabled previously. `0` means `channel 1`, `1` means `channel 2`.
 2. Once `irq` is asserted, DMAC asserts the `Interrupt` flag to signal the CPU about the completion of transfer, that means the CPU can take the Bus access.
 
 ---
 
-### **DMAC DataPath**
+## **DMAC DataPath**
 <div align='center'>
   <img src='docs/DMAC_datapath.png'>
 </div>
 
-### **DMAC Controller**
-#### **Internal Signals**
+## **DMAC Controller**
+### **Internal Signals**
 | Signal         | Type   | Purpose                                                                           |
 | -------------- | ------ | --------------------------------------------------------------------------------- |
 | `irq`          | Input  | An `OR` of `irq_1` and `irq_2` of both channels                                   |
@@ -214,12 +214,12 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 | `Bus_Grant`    | Input  | Signals that the bus Request was acknowledged and bus access has been transferred |
 | `DmacReq`      | Input  | Each bit representes a request to DMAC for data transfer from each peripheral     |
 | `ReqAck`       | Output | Each bit is an Request Ackhnowledgment signal for each peripheral                 |
-#### **State Transition Graph:**
+### **State Transition Graph:**
 <div align='center'>
   <img src='docs/DMAC_main_stg.png'>
 </div>
 
-#### **States:**
+### **States:**
 | State     | Purpose                                                                          |
 | --------- | -------------------------------------------------------------------------------- |
 | `Idle`    | The which indicates the DMAC is not handling any Requests                        |
@@ -228,12 +228,12 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 | `Wait`    | A wait state until the transfer is complete                                      |
 
 ## **DMAC Channel**
-### **Pinout:**
+## **Pinout:**
 <div align='center'>
   <img src='docs/DMAC_Channel_Pinout.png'>
 </div>
 
-### **Signals:**
+## **Signals:**
 | Signals            | Type   | Width | Purpose                                                                       |
 | ------------------ | ------ | ----- | ----------------------------------------------------------------------------- |
 | `Channel_en`       | Input  | 1     | Enables the channel.                                                          |
@@ -255,24 +255,24 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 | `MWSTRB`           | Output | 4     | Indicates which byte(s) are active during a write.                            |
 
 
-### Description: 
+## Description: 
 The DMAC (Direct Memory Access Controller) channel is responsible for autonomously transferring data between a source and destination without CPU intervention. It is designed to support both single transfers (one word per transaction) and burst transfers (multiple words per transaction), providing flexibility for various use cases.
 
 Each channel includes a dedicated FIFO buffer, which temporarily holds data during burst operations. Once the data has been successfully transferred, the channel automatically generates an interrupt to notify the CPU that the operation is complete.
 
-### Working Pipeline: 
+## Working Pipeline: 
 
 <div align='center'>
   <img src='docs/DMAC_Channel_Pipeline.png'>
 </div>
 
-#### Operation
+### Operation
 
 The DMA channel operates through a **finite state machine (FSM)** that governs the control and flow of data. The following outlines the step-by-step operation:
 
 ---
 
-#### Configuration
+### Configuration
 - When a **transfer request** is received from a peripheral, the CPU configures the DMAC by writing to the following registers:
   - `SAddr_Reg`: Source memory address
   - `DAddr_Reg`: Destination memory address
@@ -281,7 +281,7 @@ The DMA channel operates through a **finite state machine (FSM)** that governs t
 
 ---
 
-#### Start Condition
+### Start Condition
 - The transfer begins when the **`channel_en`** signal for the selected channel is asserted.
 - The FSM transitions from the **IDLE** state to the **ENABLED** state.
 - During this transition, the following internal registers are loaded from the previously configured values:
@@ -292,7 +292,7 @@ The DMA channel operates through a **finite state machine (FSM)** that governs t
 
 ---
 
-#### Data Transfer
+### Data Transfer
 - Once enabled:
   - The DMA channel issues a **read request** to the source address and increments the source address.
   - Upon receiving valid data, it stores it in the **FIFO**.
@@ -315,14 +315,14 @@ Here's a table to link each combination of `MWSTRB` to the bytes of a word, indi
 
 ---
 
-#### Completion
+### Completion
 - After the final data word is transferred:
   - The FSM returns to the **IDLE** state.
   - The DMA channel asserts an **interrupt signal** to the CPU to indicate successful completion.
 
 ---
 
-### Registers
+## Registers
 
 | Register Name       | Width | Description                                                                                                                                                                                                 |
 | ------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -333,14 +333,14 @@ Here's a table to link each combination of `MWSTRB` to the bytes of a word, indi
 | `Decrement_Counter` | 32    | Tracks the remaining number of data items to be read or written in the current burst. It decrements with each successful transfer and resets to `Burst_Size` at the start of every new read or write burst. |
 | `HSize_Reg`         | 2     | Stores the size of transfer: byte (00), halfword (01), word (10).                                                                                                                                           |
 
-### **DMAC Channel DataPath**
+## **DMAC Channel DataPath**
 <div align='center'>
   <img src='docs/DMAC_Channel_Datapath.png'>
 </div>
 
-### **DMAC Channel Controller**
+## **DMAC Channel Controller**
 
-#### **Internal Signals**
+### **Internal Signals**
 | Signal       | Type   | Purpose                                                                                                                 |
 | ------------ | ------ | ----------------------------------------------------------------------------------------------------------------------- |
 | `channel_en` | Input  | Enables the currently selected DMA channel.                                                                             |
@@ -369,12 +369,12 @@ Here's a table to link each combination of `MWSTRB` to the bytes of a word, indi
 | `wr_en`      | Output | Write enable signal for writing data to FIFO.                                                                           |
 | `trigger`    | Output | Puts the data output from FIFO on AHB bus.                                                                              |
 
-#### **State Transition Graph:**
+### **State Transition Graph:**
 <div align='center'>
   <img src='docs/DMAC_Channel_Controller.png'>
 </div>          |
 
-#### **States:**
+### **States:**
 | State        | Purpose                                                                                                                                                     |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Disabled`   | Indicates the DMAC Channel is not handling any Requests.                                                                                                    |
@@ -389,7 +389,7 @@ To thoroughly verify the DMAC's functionality, a Mock AHB Peripheral was designe
 
 ## **Waveforms**
 
-#### DmacReq - 01
+### DmacReq - 01
 In this image, the `DmacReq` signal was `01`, so `Channel 2` was enabled and Interrupt was generated transfer was complete. The last 2 `word` as seen in the image are transferred via single word transfer while the remaining in bursts. `HSize` was kept as `byte` and the address offset was `3`.
 <div align='center'>
 <img src='docs/tb_01req.png'>
@@ -402,7 +402,7 @@ All test cases were passed as only those bytes were tested which were valid depe
 
 ---
 
-#### DmacReq - 10
+### DmacReq - 10
 Here, `HSize` was kept as `halfword` and the address offset was kept at `2`.
 <div align='center'>
 <img src='docs/tb_10req.png'>
@@ -414,7 +414,7 @@ All test cases were passed depending upon the `MWSTRB` signal.
 
 ---
 
-#### DmacReq - 11
+### DmacReq - 11
 In this case, `HSize` was kept as `word` and the address offset was kept at `0`.
 <div align='center'>
 <img src='docs/tb_11req.png'>
@@ -426,7 +426,7 @@ All test cases were passed while expected valid of `MWSTRB` was `1111`.
 
 ---
 
-#### Bus Grant Deasserted mid transfer
+### Bus Grant Deasserted mid transfer
 In this case, `HSize` is still `word` encoded and offset is `0` but bus grant was deasserted mid transfer for 2 clock edges.
 <div align='center'>
 <img src='docs/bg_da.png'>
