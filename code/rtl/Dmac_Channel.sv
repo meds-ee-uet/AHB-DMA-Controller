@@ -30,7 +30,7 @@ module Dmac_Channel (
 
     // Internal wires
     logic s_sel, d_sel, b_sel, t_sel;
-    logic s_en, d_en, ts_en, burst_en, count_en;
+    logic s_en, d_en, ts_en, burst_en, count_en, sz_en;
     logic h_sel, rd_en, wr_en;
     logic fifo_full, fifo_empty;
     logic trigger;
@@ -47,6 +47,7 @@ module Dmac_Channel (
         .s_en        (s_en),
         .d_en        (d_en),
         .ts_en       (ts_en),
+        .sz_en       (sz_en),
         .burst_en    (burst_en),
         .count_en    (count_en),
         .h_sel       (h_sel),
@@ -58,6 +59,7 @@ module Dmac_Channel (
         .T_Size      (T_Size),
         .B_Size      (B_Size),
         .R_Data      (R_Data),
+        .HSize       (HSize),
         .bs0         (bs0),
         .tslb        (tslb),
         .ts0         (ts0),
@@ -91,6 +93,7 @@ module Dmac_Channel (
         .d_en        (d_en),
         .s_en        (s_en),
         .ts_en       (ts_en),
+        .sz_en       (sz_en),
         .burst_en    (burst_en),
         .count_en    (count_en),
         .rd_en       (rd_en),

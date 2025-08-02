@@ -118,17 +118,17 @@ module Dmac_Top_tb;
         HAddr = 32'h0000_0000;    
         @(posedge clk);
         HAddr = 32'h0000_0004;  
-        HWData = 32'd10;        // Size Reg
+        HWData = 32'd18;        // Size Reg
         @(posedge clk);
         HAddr = 32'h0000_0008;  
-        HWData = 32'h0000_0000; // Source
+        HWData = 32'h0000_0003; // Source
         temp_src_addr = HWData;
         @(posedge clk);
         HAddr = 32'h0000_000C;  
         HWData = 32'h0000_1000; // Destination
 
         @(posedge clk);
-        HWData = 32'h0001_0006; // Control register
+        HWData = 32'h0001_0004; // Control register
         HSel = 0;
         write = 0;
 
@@ -147,7 +147,7 @@ module Dmac_Top_tb;
             2'b01: begin  // Halfword
                 case (temp_src_addr[1:0])
                     2'b00: temp_Strb = 4'b0011;  
-                    2'b10: temp_Strb = 4'b1100;  
+                    2'b10: temp_Strb = 4'b1100;
                     default: temp_Strb = 4'b0000; 
                 endcase
             end
@@ -171,14 +171,13 @@ module Dmac_Top_tb;
     end
 
 task monitor(input logic [31:0] transfer_size);
-    for(int i = 0; i < 18; i++) begin
-        $display("\033[1;36m---------Word No. %-2d---------\033[0m", i);
+    for(int i = 0; i < transfer_size; i++) begin
+        $display("\033[1;36m---------Word No. %-2d---------\033[0m", i+1);
         for (int j = 0; j < 4; j++) begin
-            if (temp_Strb[0])
+            if (temp_Strb[j])
                 check_byte(j+(i*4));
             else
                 $display("\033[1;35mInvalid Byte\033[0m");
-
         end
     end
     $display("\033[1;35mTest Cases:\033[0m\n    \033[1;32mPassed = %d\033[0m, \033[1;31mFailed = %d\033[0m", passed, failed);

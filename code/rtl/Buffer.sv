@@ -40,7 +40,7 @@ module mock_ahb_peripheral #(
     logic        latched_sel;
 
     // Word-aligned address (256 x 32-bit memory = 8-bit address)
-    logic [7:0] addr_index;
+    logic [9:0] addr_index;
     assign addr_index = latched_addr[9:0];
 
     // Peripheral is always ready and always responds OKAY
@@ -73,7 +73,7 @@ module mock_ahb_peripheral #(
                 mem[addr_index+1] <= HWDATA[15:8];
             if (WSTRB[2])
                 mem[addr_index+2] <= HWDATA[23:16];
-            if (WSTRB[1])
+            if (WSTRB[3])
                 mem[addr_index+3] <= HWDATA[31:24];
         end
     end
@@ -81,7 +81,7 @@ module mock_ahb_peripheral #(
     // Data Phase: Perform read (combinational)
     always_comb begin
         if (latched_valid && latched_sel && !latched_write) begin
-            HRDATA = {mem[addr_index+3], mem[addr_index+2], mem[addr_index+1], mem[addr_index]};
+            HRDATA = {mem[(addr_index[9:2]*4)+3], mem[(addr_index[9:2]*4)+2], mem[(addr_index[9:2]*4)+1], mem[(addr_index[9:2]*4)]};
         end else begin
             HRDATA = 32'd0;
         end

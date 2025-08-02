@@ -166,8 +166,8 @@ module Dmac_Channel_Datapath (
                 2'b01: begin  // Halfword
                     case (Src_Addr[1:0])
                         2'b00: MWStrb = 4'b0011;  
-                        2'b10: MWStrb = 4'b1100;  
-                        default: MWStrb = 4'b0000; 
+                        2'b10: MWStrb = 4'b1100;
+                        default: MWStrb = 4'b0000;
                     endcase
                 end
 
