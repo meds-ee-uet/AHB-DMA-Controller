@@ -11,21 +11,49 @@
     - [Control and Interrupt Interface](#control-and-interrupt-interface)
     - [Master Interface](#master-interface)
   - [Working Pipeline](#working-pipeline)
-  - 
+    - [Request from Peripheral](#request-from-peripheral)
+    - [Slave Configuration](#slave-configuration)
+    - [Enabling Channels](#enabling-channels)
+    - [Transfer Completion and Disabling DMAC](#transfer-completion-and-disabling-dmac)
+  - [DMAC Datapath](#dmac-datapath)
+  - [DMAC Controller](#dmac-controller)
+    - [Internal Signals](#internal-signals)
+    - [State Transition Graph](#state-transition-graph)
+    - [States](#states)
 - [DMAC Channel](#dmac-channel)
+  - [Pinout](#pinout)
+  - [Signals](#signals-1)
   - [Description](#description)
-  - [Operation](#operation)
-  - [Configuration](#configuration)
-  - [Start Condition](#start-condition)
-  - [Data Transfer](#completion)
+  - [Working Pipeline](#working-pipeline-1)
+    - [Operation](#operation)
+    - [Configuration](#configuration)
+    - [Start Condition](#start-condition)
+    - [Data Transfer](#completion)
   - [Registers](#registers)
+  - [DMAC Channel Datapath](#dmac-channel-datapath)
+  - [DMAC Channel Controller](#dmac-channel-controller)
+    - [Internal Signals](#internal-signals-1)
+    - [State Transition Graph](#state-transition-graph-1)
+    - [States](#states-1)
 
 ## **Introduction**
-Direct Memory Access Controller is used to allow the peripherals to directly transfer data to their required destination i.e. Memory or another peripheral without disrupting the processor. This saves the processor from handling lenghty transfers because when a CPU handles data transfers, it remains blocked and can't perform instructions. This transfer can take many cycles so to avoid this, the transfer is handed over to the DMAC along with the control of the Bus. DMAC handles the transfer while the CPU can deal with other tasks and instructions. A DMAC has two types of transfers:
-- Burst Transfer
-- Single Transfer
+A Direct Memory Access Controller (DMAC) is a hardware module designed to facilitate efficient data transfers between memory and peripherals, or between two peripheral devices, without heavily involving the processor (CPU). This mechanism allows data movement to occur in the background, freeing the CPU to execute other instructions or handle high-priority tasks.
 
-In a Burst Transfer, data is buffered in a FIFO untill burst size is reached and then transfered one-by-one untill the FIFO is empty.
+When the CPU is tasked with handling data transfers directly, it typically becomes blocked — it must wait and perform each individual read and write operation. This process consumes valuable processor cycles and significantly hampers overall system performance, especially when dealing with large volumes of data. To alleviate this bottleneck, the DMAC takes over the responsibility of managing the transfer and temporarily gains control of the system bus.
+
+Once granted control, the DMAC autonomously carries out the data transfer between source and destination addresses using its own internal logic. After completing the transfer, it relinquishes the bus back to the CPU, generating an interrupt to signal completion.
+
+***Transfer Types***
+DMAC supports two fundamental types of data transfers:
+
+- **Burst Transfer**
+In burst mode, the DMAC collects data into a FIFO buffer. Once the buffer reaches the defined burst size, transfer starts. Data is sent in a continuous sequence without interruption. This reduces bus arbitration and improves throughput. Best suited for large data blocks or high-speed devices. However, it can monopolize the bus during the burst. Careful arbitration is needed in multi-master systems.
+
+- **Single Transfer**
+In single mode, one data item is moved at a time. It is used when a peripheral only has 1 word to transfer. Ideal for low-latency or real-time applications. Overhead is higher due to repeated bus arbitration. More predictable and fair in shared-bus environments. Recommended for small or sporadic data transfers.
+
+
+
 
 ## **Specifications**
 - Number of Channels: 2
@@ -33,6 +61,8 @@ In a Burst Transfer, data is buffered in a FIFO untill burst size is reached and
   - Highest priority: `Channel 1`
   - Lowest priortity: `Channel 2`
 - Maximum Burst Transfer Capability: `16 beats`
+- Endianness: `Little-Endian`
+- Invariance: `byte invariant`
 - Highest priority to `DmacReq[1]` Request - Assigned `Channel 1`
 - FIFO depth in Each Channel: 16 words
 - Supported Peripherals/Slaves: 2
@@ -49,8 +79,9 @@ In a Burst Transfer, data is buffered in a FIFO untill burst size is reached and
     - `Size_Reg`: `0x0`
     - `Ctrl_Reg`: `0xC`
 - Request and Response Interface: For peripherals
+- If CPU asks for bus access, burst transfer is halted until bus access is granted again.
 
-# **DMAC**
+## ***DMAC***
 
 ### **Block Diagram/Pinout**
 <div align='center'>
@@ -95,6 +126,7 @@ In a Burst Transfer, data is buffered in a FIFO untill burst size is reached and
 |`M_HResp`|Input|2|From slave to master, tells if the transfer was successful or not|
 |`MHSize`|Output|2|Tells the size of the single transfer i.e. `byte`, `halfword` or `word`|
 |`MWSTRB`|Output|4|`4` bit signal, each bit represents a valid `byte` in a `word`|
+
 ### **Working Pipeline:**
 This DMAC has been designed as to follow a certain pipeline to complete the transfer. The pipeline is as follows:
 <div align='center'>
@@ -161,8 +193,8 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 |`LSB`|State indicating that the peripheral with a lower priority has made the request|
 |`Wait`|A wait state until the transfer is complete|
 
-## DMAC Channel
-### Pinout: 
+## **DMAC Channel**
+### **Pinout:**
 <div align='center'>
   <img src='docs/DMAC_Channel_Pinout.png'>
 </div>
@@ -188,7 +220,12 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 | `MHSize`           | Output | 2      |  Specifies the size of each transfer: byte (00), halfword (01), word (10).        |
 | `MWSTRB`           | Output | 4      |Indicates which byte(s) are active during a write. |
 
-
+***HSize Encodings***
+|Data Size   |Encoding   |
+|------------|-----------|
+|`byte`      |`00`       |
+|`halfword`  |`01`       |
+|`word`      |`10`       |
 
 ### Description: 
 The DMAC (Direct Memory Access Controller) channel is responsible for autonomously transferring data between a source and destination without CPU intervention. It is designed to support both single transfers (one word per transaction) and burst transfers (multiple words per transaction), providing flexibility for various use cases.
@@ -201,13 +238,13 @@ Each channel includes a dedicated FIFO buffer, which temporarily holds data duri
   <img src='docs/DMAC_Channel_Pipeline.png'>
 </div>
 
-### Operation
+#### Operation
 
 The DMA channel operates through a **finite state machine (FSM)** that governs the control and flow of data. The following outlines the step-by-step operation:
 
 ---
 
-### Configuration
+#### Configuration
 - When a **transfer request** is received from a peripheral, the CPU configures the DMAC by writing to the following registers:
   - `SAddr_Reg`: Source memory address
   - `DAddr_Reg`: Destination memory address
@@ -216,7 +253,7 @@ The DMA channel operates through a **finite state machine (FSM)** that governs t
 
 ---
 
-### Start Condition
+#### Start Condition
 - The transfer begins when the **`channel_en`** signal for the selected channel is asserted.
 - The FSM transitions from the **IDLE** state to the **ENABLED** state.
 - During this transition, the following internal registers are loaded from the previously configured values:
@@ -227,17 +264,30 @@ The DMA channel operates through a **finite state machine (FSM)** that governs t
 
 ---
 
-### Data Transfer
+#### Data Transfer
 - Once enabled:
   - The DMA channel issues a **read request** to the source address and increments the source address.
   - Upon receiving valid data, it stores it in the **FIFO**.
   - Then, a **write request** is issued to the destination address and destination address is incremented.
 - In **burst mode**, multiple data items are read in chunks, temporarily buffered in the FIFO, and then written sequentially.
 - This process repeats until the **entire configured transfer size** is completed.
+- If the `transfer_size` is an exact multiple of the `burst_size`, the entire data is transferred using burst transfers. Otherwise, the largest possible number of full bursts are used, and the remaining data (`transfer_size % burst_size`) is transferred using single transfers.
+- **Writing Strobe Signal - MWSTRB:** During **writing**, to indicate which `byte` (when `HSize` = `byte`) or which `halfword` (when `HSize` = `halfword`) is valid in the word being transferred, `MWSTRB` signal is used.
+Here's a table to link each combination of `MWSTRB` to the bytes of a word, indicating which one is valid.
+
+|Data Size|Address Offset|MWSTRB|HWDATA[31:24]|HWDATA[23:16]|HWDATA[15:8]|HWDATA[7:0]|
+|----|-----|-----|-----|-----|----|-----|
+|`word`|`0`|`1111`|Valid|Valid|Valid|Valid|
+|`halfword`|`0`|`0011`|||Valid|Valid|
+|`halfword`|`2`|`1100`|Valid|Valid|||
+|`byte`|`0`|`0001`||||Valid|
+|`byte`|`1`|`0010`|||Valid||
+|`byte`|`2`|`0100`||Valid|||
+|`byte`|`3`|`1000`|Valid||||
 
 ---
 
-### Completion
+#### Completion
 - After the final data word is transferred:
   - The FSM returns to the **IDLE** state.
   - The DMA channel asserts an **interrupt signal** to the CPU to indicate successful completion.
