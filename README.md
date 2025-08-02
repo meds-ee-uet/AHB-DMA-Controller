@@ -43,8 +43,7 @@ When the CPU is tasked with handling data transfers directly, it typically becom
 
 Once granted control, the DMAC autonomously carries out the data transfer between source and destination addresses using its own internal logic. After completing the transfer, it relinquishes the bus back to the CPU, generating an interrupt to signal completion.
 
-***Transfer Types***
-DMAC supports two fundamental types of data transfers:
+***Transfer Types:*** DMAC supports two fundamental types of data transfers:
 
 - **Burst Transfer**
 In burst mode, the DMAC collects data into a FIFO buffer. Once the buffer reaches the defined burst size, transfer starts. Data is sent in a continuous sequence without interruption. This reduces bus arbitration and improves throughput. Best suited for large data blocks or high-speed devices. However, it can monopolize the bus during the burst. Careful arbitration is needed in multi-master systems.
@@ -139,6 +138,8 @@ First of all, peripheral requests for a transfer to DMAC.
 2. If both bits of DmacReq are asserted, DMAC ignores `DmacReq[0]` signal and doesn't assert its request acknowledge signal `ReqAck[1]`.
 3. `Channel 2` is used for `DmacReq[0]`.
 
+---
+
 #### **Slave Configuration**
 After the Request, DMAC asserts Hold and waits for CPU to configure the Slave Interface. Along with Hold, DMAC also Requests for Bus. Bus Request remains asserted until Bus is granted.
 1. The Sequence in which slave registers should be configured are:
@@ -150,13 +151,19 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 3. Slave Gets Configured, i.e. `c_config` signal gets asserted.
 4. DMAC waits for Bus Grant.
 
+---
+
 #### **Enabling Channels**
 1. After the DMAC is granted the bus, DMAC asserts the `ReqAck `bit corresponding to the `DmacReq` bit which results in deassertion of `DmacReq` bit by the slave/peripheral.
 2. Corresponding to `DmacReq`, the channel is enabled i.e. `Channel 1` is used for `DmacReq[1]` and has the highest priority.Whereas, `Channel 2` is for `DmacReq[0]` bit.
 
+---
+
 #### **Transfer Completion and Disabling DMAC**
 1. After the channel has been enabled, Now the DMAC waits for `irq` which signals transfer completion from the channel's side. During the transfer, it is important to decide which channel should output the data to the master interface. To do that, a mux is used with `con_sel` signal as selector. This `con_sel` is also given to a FlipFlop and the output of the FlipFlop, `new_con_sel` is the input to the controller of the DMAC, which informs which channel was enabled previously. `0` means `channel 1`, `1` means `channel 2`.
 2. Once `irq` is asserted, DMAC asserts the `Interrupt` flag to signal the CPU about the completion of transfer, that means the CPU can take the Bus access.
+
+---
 
 ### **DMAC DataPath**
 <div align='center'>
@@ -220,12 +227,6 @@ After the Request, DMAC asserts Hold and waits for CPU to configure the Slave In
 | `MHSize`           | Output | 2      |  Specifies the size of each transfer: byte (00), halfword (01), word (10).        |
 | `MWSTRB`           | Output | 4      |Indicates which byte(s) are active during a write. |
 
-***HSize Encodings***
-|Data Size   |Encoding   |
-|------------|-----------|
-|`byte`      |`00`       |
-|`halfword`  |`01`       |
-|`word`      |`10`       |
 
 ### Description: 
 The DMAC (Direct Memory Access Controller) channel is responsible for autonomously transferring data between a source and destination without CPU intervention. It is designed to support both single transfers (one word per transaction) and burst transfers (multiple words per transaction), providing flexibility for various use cases.
