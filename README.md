@@ -429,3 +429,7 @@ Even though DMAC was removed as bus master, Transfer resumed after DMAC was agai
 <div align='center'>
 <img width=300px height=334px src='docs/bg_da_tc.png'>
 </div>
+
+# ***References***
+- [AHB Bus - Documentation](https://developer.arm.com/documentation/ihi0033/latest/)
+- [ARM PL081 Single Master DMAC - Documentation](https://developer.arm.com/documentation/ddi0218/e)
