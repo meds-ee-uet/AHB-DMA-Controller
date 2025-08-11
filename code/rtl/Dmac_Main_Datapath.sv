@@ -13,54 +13,47 @@
 module Dmac_Main_Datapath(
     input logic clk,
     input logic rst,
-    input logic write,
-    input logic HSel,
-    input logic [1:0] STrans, //From CPU to configure it
+    input logic config_write,
     input logic channel_en_1,
     input logic channel_en_2,
-    input logic [31:0] HWData,
-    input logic [31:0] HAddr,
     input logic [31:0] MRData,
     input logic HReady,
     input logic [1:0] M_HResp,
+    input logic [1:0] DmacReq, addr_inc_sel, config_HTrans, 
     input logic con_en,
-    input logic con_sel,
+    input logic [1:0] con_sel,
+    input logic DmacReq_Reg_en, SAddr_Reg_en, DAddr_Reg_en, Trans_sz_Reg_en, Ctrl_Reg_en,
 
     output logic C_config,
     output logic irq,
-    output logic con_new_sel,
+    output logic [1:0] con_new_sel,
     output logic [31:0] MAddress,
     output logic [31:0] MWData,
     output logic [3:0] MBurst_Size,
     output logic MWrite,
     output logic [3:0] MWStrb,
-    output logic [1:0] MTrans
+    output logic [1:0] MTrans,
+    output logic [1:0] DmacReq_Reg
 );
 
-logic dmac_selected;
-logic [3:0] decoded_address;
 logic [31:0] Size_Reg, SAddr_Reg, DAddr_Reg, Ctrl_Reg;
-logic [31:0] latched_address;
-logic latched_write, latched_sel;
-logic [1:0] latched_STrans;
+logic [31:0] decoded_Src_addr, config_SAddr;
+logic [3:0] config_strbs;
+logic [1:0] config_HSize, config_BurstSize;
 
-assign  dmac_selected = latched_write && latched_STrans[1] && latched_sel;
-assign decoded_address = latched_address[5:2];
-
+assign config_HSize = 2'b10;
+assign config_BurstSize = 2'b01;
+assign config_strbs = 4'b1111;
 assign C_config = Ctrl_Reg[16];
 
-always_ff @( posedge clk ) begin
-    if (rst) begin
-        latched_address = 32'b0;
-        latched_write = 0;
-        latched_STrans = 2'b0;
-        latched_sel = 0;
-    end else begin
-        latched_address <= HAddr;
-        latched_STrans <= STrans;
-        latched_sel <= HSel;
-        latched_write <= write;
-    end
+always_comb begin
+    case(DmacReq)
+        2'b01: decoded_Src_addr = 32'h0000_0000;
+        2'b10: decoded_Src_addr = 32'h0000_1000;
+        2'b11: decoded_Src_addr = 32'h0000_1000;
+        default: 
+            decoded_Src_addr = 32'h0000_0000;
+    endcase
 end
 
 always_ff @(posedge clk or posedge rst) begin
@@ -72,15 +65,29 @@ always_ff @(posedge clk or posedge rst) begin
     end
     else if (irq)
         Ctrl_Reg <= 32'b0;
-    else if (dmac_selected) begin
-        case (decoded_address)
-            4'b0000: Size_Reg <=  HWData;
-            4'b0001: SAddr_Reg <= HWData;
-            4'b0010: DAddr_Reg <= HWData;
-            4'b0011: Ctrl_Reg <=  HWData;
-            default: ;
-        endcase
-    end
+    else if (SAddr_Reg_en)
+        SAddr_Reg <= decoded_Src_addr;
+    else if (DAddr_Reg_en)
+        DAddr_Reg <= MRData;
+    else if (Trans_sz_Reg_en)
+        Size_Reg <= MRData;
+    else if (Ctrl_Reg_en)
+        Ctrl_Reg <= MRData;
+end
+
+always_ff @(posedge clk or posedge rst) begin
+    if(rst)
+        DmacReq_Reg = 32'b0;
+    else if (DmacReq_Reg_en)
+        DmacReq_Reg <= DmacReq;
+end
+
+always_comb begin
+    case(addr_inc_sel)
+        2'b00:  config_SAddr = SAddr_Reg + 32'h0000_0300;
+        2'b01:  config_SAddr = SAddr_Reg + 32'h0000_0304;
+        2'b10:  config_SAddr = SAddr_Reg + 32'h0000_0308;
+    endcase
 end
 
 // Channel 1 signals
@@ -143,13 +150,32 @@ Dmac_Channel channel_2 (
     .MWStrb(MWStrb_2)
 );
 
-assign MAddress = con_sel? MAddress_2 : MAddress_1;
-assign MWData = con_sel? MWData_2 : MWData_1;
-assign MTrans = con_sel? MTrans_2 : MTrans_1;
-assign MBurst_Size = Ctrl_Reg[3:0];
-assign MWrite = con_sel? write_2 : write_1;
+always_comb begin
+    if(con_sel == 2'b00) begin
+        MAddress = MAddress_1;
+        MWData = MWData_1;
+        MTrans = MTrans_1;
+        MBurst_Size = Ctrl_Reg[3:0];
+        MWrite = write_1;
+        MWStrb = MWStrb_1;
+    end else if (con_sel == 2'b01) begin
+        MAddress = MAddress_2;
+        MWData = MWData_2;
+        MTrans = MTrans_2;
+        MBurst_Size = Ctrl_Reg[3:0];
+        MWrite = write_2;
+        MWStrb = MWStrb_2;
+    end else if (con_sel == 2'b10) begin
+        MAddress = config_SAddr;
+        MWData = 32'h0000_0000;
+        MTrans = config_HTrans;
+        MBurst_Size = 2'b00;
+        MWrite = config_write;
+        MWStrb = 4'b1111;
+    end
+end
+
 assign irq = irq_1 || irq_2; 
-assign MWStrb = con_sel? MWStrb_2 : MWStrb_1;
 
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
