@@ -12,10 +12,14 @@
 // Date: July 23rd, 2025
 
 typedef enum logic [1:0] {
-    IDLE     = 2'b00,
-    MSB_REQ  = 2'b01,
-    LSB_REQ  = 2'b10,
-    WAIT     = 2'b11
+    IDLE                = 2'b00,
+    BUS_REQD            = 3'b001,
+    WAIT_FOR_DST        = 3'b010,
+    WAIT_FOR_TRANS_SIZE = 3'b011,
+    WAIT_FOR_CTRL       = 3'b100,
+    MSB_REQ             = 3'b101,
+    LSB_REQ             = 3'b110,
+    WAIT                = 3'b111
 } state_t;
 
 module Dmac_Main_Ctrl(
@@ -63,15 +67,7 @@ module Dmac_Main_Ctrl(
 
         case (current_state)
             IDLE: begin
-                if (DmacReq[1] == 1'b1) begin
-                    hold     = 1;
-                    Bus_Req  = 1;
-                    next_state = MSB_REQ;
-                end else if (DmacReq == 2'b01) begin
-                    hold     = 1;
-                    Bus_Req  = 1;
-                    next_state = LSB_REQ;
-                end
+                
             end
 
             MSB_REQ: begin
