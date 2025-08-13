@@ -15,9 +15,6 @@ module Dmac_Top_tb;
 
     logic clk, rst;
     logic [31:0] MRData;
-    logic write, HSel;
-    logic [31:0] HWData, HAddr;
-    logic HReadyOut;
     logic [1:0] HResp;
     logic [1:0] DmacReq;
     logic Bus_Grant;
@@ -39,9 +36,8 @@ module Dmac_Top_tb;
     // Instantiate DUT
     Dmac_Top dut (
         .clk(clk), .rst(rst),
-        .MRData(MRData), .write(write), .HSel(HSel), .STrans(2'b10),
-        .HWData(HWData), .HAddr(HAddr), .HReady(1'b1), .M_HResp(HResp),
-        .DmacReq(DmacReq), .Bus_Grant(Bus_Grant), .HReadyOut(), .S_HResp(),
+        .MRData(MRData), .HReady(1'b1), .M_HResp(HResp),
+        .DmacReq(DmacReq), .Bus_Grant(Bus_Grant),
         .MAddress(MAddress), .MWData(MWData), .MBurst_Size(MBurst_Size),
         .MWrite(MWrite), .MTrans(MTrans), .Bus_Req(Bus_Req),
         .Interrupt(Interrupt), .ReqAck(ReqAck), .MWStrb(MWStrb)
@@ -94,10 +90,6 @@ module Dmac_Top_tb;
         // Initial state
         clk = 0;
         rst = 1;
-        write = 0;
-        HSel = 0;
-        HWData = 0;
-        HAddr = 0;
         DmacReq = 0;
         Bus_Grant = 0;
 
@@ -105,35 +97,40 @@ module Dmac_Top_tb;
             source.mem[i] = i+i;
         end
 
+
+        source.mem[32'h0000_00A3] = 8'h00;
+        source.mem[32'h0000_00A2] = 8'h00;
+        source.mem[32'h0000_00A1] = 8'h00;
+        source.mem[32'h0000_00A0] = 8'h03;
+
+        source.mem[32'h0000_00A7] = 8'h00;
+        source.mem[32'h0000_00A6] = 8'h00;
+        source.mem[32'h0000_00A5] = 8'h10;
+        source.mem[32'h0000_00A4] = 8'h00;
+
+        source.mem[32'h0000_00AB] = 8'h00;
+        source.mem[32'h0000_00AA] = 8'h00;
+        source.mem[32'h0000_00A9] = 8'h00;
+        source.mem[32'h0000_00A8] = 8'd18;
+
+        source.mem[32'h0000_00AF] = 8'h00;
+        source.mem[32'h0000_00AE] = 8'h01;
+        source.mem[32'h0000_00AD] = 8'h00;
+        source.mem[32'h0000_00AC] = 8'h04;
+
         // Wait a few cycles
         repeat (5) @(posedge clk);
         rst = 0;
 
+        temp_src_addr = {source.mem[32'h0000_00A3], source.mem[32'h0000_00A2], source.mem[32'h0000_00A1], source.mem[32'h0000_00A0]};
+        temp_hsize = source.mem[32'h0000_00AC][7:4];
+
         // Request from Peripheral 
         @(posedge clk);
-        DmacReq = 2'b11;
+        DmacReq = 2'b01;
         // Program DMA channel via CPU-like interface
-        @(posedge clk);
-        HSel = 1; write = 1;
-        HAddr = 32'h0000_0000;    
-        @(posedge clk);
-        HAddr = 32'h0000_0004;  
-        HWData = 32'd18;        // Size Reg
-        @(posedge clk);
-        HAddr = 32'h0000_0008;  
-        HWData = 32'h0000_0000; // Source
-        temp_src_addr = HWData;
-        @(posedge clk);
-        HAddr = 32'h0000_000C;  
-        HWData = 32'h0000_1000; // Destination
 
         @(posedge clk);
-        HWData = 32'h0001_0024; // Control register
-        HSel = 0;
-        write = 0;
-
-        @(posedge clk);
-        temp_hsize = HWData[7:4];
         case (temp_hsize)
             2'b00: begin  // Byte
                 case (temp_src_addr[1:0])
@@ -158,13 +155,7 @@ module Dmac_Top_tb;
         // Grant bus to DMA
         @(posedge clk);
         Bus_Grant = 1;
-        // DmacReq = 2'b0;
-
-        repeat(10) @(posedge clk);
-        Bus_Grant = 0;
-
-        repeat(2) @(posedge clk);
-        Bus_Grant = 1; 
+        DmacReq = 2'b0;
 
         // Wait until transfer is done
         wait (Interrupt == 1);
@@ -172,7 +163,7 @@ module Dmac_Top_tb;
         $display("Time = %0t ps, Interrupt asserted!", $time);
         // Verify destination memory
         $display("\033[1;36mDMA transfer completed. Checking destination memory...\033[0m");
-        monitor(10);
+        monitor(18);
         $stop;
     end
 

@@ -11,15 +11,16 @@
 // Authors: Muhammad Mouzzam and Danish Hassan 
 // Date: July 23rd, 2025
 
-typedef enum logic [2:0] {
-    IDLE                = 3'b000,
-    BUS_REQD            = 3'b001,
-    WAIT_FOR_DST        = 3'b010,
-    WAIT_FOR_TRANS_SIZE = 3'b011,
-    WAIT_FOR_CTRL       = 3'b100,
-    MSB_REQ             = 3'b101,
-    LSB_REQ             = 3'b110,
-    WAIT                = 3'b111
+typedef enum logic [3:0] {
+    IDLE                = 4'b0000,
+    BUS_REQD            = 4'b0001,
+    WAIT_FOR_SRC        = 4'b0010,
+    WAIT_FOR_DST        = 4'b0011,
+    WAIT_FOR_TRANS_SIZE = 4'b0100,
+    WAIT_FOR_CTRL       = 4'b0101,
+    MSB_REQ             = 4'b0110,
+    LSB_REQ             = 4'b0111,
+    WAIT                = 4'b1000
 } state_t;
 
 typedef enum logic [1:0] {
@@ -43,9 +44,8 @@ module Dmac_Main_Ctrl(
     output logic DmacReq_Reg_en, SAddr_Reg_en, DAddr_Reg_en, Trans_sz_Reg_en, Ctrl_Reg_en,
     output logic [1:0] addr_inc_sel,
     output logic Interrupt,
-    output logic con_en, config_write,
+    output logic con_en, config_write, PeriAddr_reg_en,
     output logic Channel_en_1, Channel_en_2,
-    output logic hold,
     output logic [1:0] ReqAck,
     output HTrans_t config_HTrans
 );
@@ -61,32 +61,30 @@ module Dmac_Main_Ctrl(
 
     always_comb begin
         // Default outputs
-        hold         = 0;
-        Bus_Req      = 0;
-        Interrupt    = 0;
-        con_en       = 0;
-        con_sel      = 2'b00;
-        Channel_en_1 = 0;
-        Channel_en_2 = 0;
-        HReadyOut    = 0;
-        SAddr_Reg_en = 0;
-        addr_inc_sel = 0;
-        config_write = 0;
-        DmacReq_Reg_en = 0;
-        DAddr_Reg_en = 0;
+        Bus_Req         = 1;
+        Interrupt       = 0;
+        con_en          = 0;
+        Channel_en_1    = 0;
+        Channel_en_2    = 0;
+        SAddr_Reg_en    = 0;
+        addr_inc_sel    = 0;
+        config_write    = 0;
+        DmacReq_Reg_en  = 0;
+        DAddr_Reg_en    = 0;
         Trans_sz_Reg_en = 0;
-        Ctrl_Reg_en = 0;
-        ReqAck       = 2'b00;
-        S_HResp      = 2'b00;
-        config_HTrans = Idle;
-        next_state   = current_state;  // Default next state
+        Ctrl_Reg_en     = 0;
+        PeriAddr_reg_en = 0;
+        con_sel         = 2'b00;
+        ReqAck          = 2'b00;
+        config_HTrans   = Idle;
+        next_state      = current_state;  // Default next state
 
         case (current_state)
             IDLE: begin
                 if(DmacReq != 2'b00) begin
                     Bus_Req = 1;
                     DmacReq_Reg_en = 1;
-                    SAddr_Reg_en = 1;
+                    PeriAddr_reg_en = 1;
                     next_state = BUS_REQD;
                 end
             end
@@ -98,18 +96,18 @@ module Dmac_Main_Ctrl(
                     addr_inc_sel = 2'b00;
                     config_HTrans = Non_Seq;
                     ReqAck = 2'b10;
-                    next_state = WAIT_FOR_DST;
+                    next_state = WAIT_FOR_SRC;
                 end else if(Bus_Grant && HReady && DmacReq_Reg == 2'b01) begin
                     con_sel = 2'b10;
                     config_write = 0;
                     addr_inc_sel = 2'b00;
                     config_HTrans = Non_Seq;
                     ReqAck = 2'b01;
-                    next_state = WAIT_FOR_DST;
+                    next_state = WAIT_FOR_SRC;
                 end
             end
 
-            WAIT_FOR_DST: begin
+            WAIT_FOR_SRC: begin
                 if (!HReady) begin
                     con_sel        = 2'b10;
                     config_write   = 0;
@@ -119,6 +117,22 @@ module Dmac_Main_Ctrl(
                     con_sel        = 2'b10;
                     config_write   = 0;
                     addr_inc_sel   = 2'b01;
+                    config_HTrans  = Non_Seq;
+                    SAddr_Reg_en   = 1;
+                    next_state     = WAIT_FOR_DST;
+                end
+            end
+
+            WAIT_FOR_DST: begin
+                if (!HReady) begin
+                    con_sel        = 2'b10;
+                    config_write   = 0;
+                    addr_inc_sel   = 2'b10;
+                    config_HTrans  = Busy;
+                end else if (Bus_Grant && HReady) begin
+                    con_sel        = 2'b10;
+                    config_write   = 0;
+                    addr_inc_sel   = 2'b10;
                     config_HTrans  = Non_Seq;
                     DAddr_Reg_en   = 1;
                     next_state     = WAIT_FOR_TRANS_SIZE;
@@ -129,12 +143,12 @@ module Dmac_Main_Ctrl(
                 if (!HReady) begin
                     con_sel        = 2'b10;
                     config_write   = 0;
-                    addr_inc_sel   = 2'b10;
+                    addr_inc_sel   = 2'b11;
                     config_HTrans  = Busy;
                 end else if (Bus_Grant && HReady) begin
                     con_sel        = 2'b10;
                     config_write   = 0;
-                    addr_inc_sel   = 2'b10;
+                    addr_inc_sel   = 2'b11;
                     Trans_sz_Reg_en = 1;
                     config_HTrans  = Non_Seq;
                     next_state = WAIT_FOR_CTRL;
@@ -144,7 +158,7 @@ module Dmac_Main_Ctrl(
             WAIT_FOR_CTRL: begin
                 con_sel        = 2'b10;
                 config_write   = 0;
-                addr_inc_sel   = 2'b10;
+                addr_inc_sel   = 2'b11;
 
                 if (!HReady) begin
                     config_HTrans = Busy;

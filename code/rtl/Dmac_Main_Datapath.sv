@@ -23,6 +23,7 @@ module Dmac_Main_Datapath(
     input logic con_en,
     input logic [1:0] con_sel,
     input logic DmacReq_Reg_en, SAddr_Reg_en, DAddr_Reg_en, Trans_sz_Reg_en, Ctrl_Reg_en,
+    input logic PeriAddr_reg_en,
 
     output logic C_config,
     output logic irq,
@@ -36,8 +37,8 @@ module Dmac_Main_Datapath(
     output logic [1:0] DmacReq_Reg
 );
 
-logic [31:0] Size_Reg, SAddr_Reg, DAddr_Reg, Ctrl_Reg;
-logic [31:0] decoded_Src_addr, config_SAddr;
+logic [31:0] Size_Reg, SAddr_Reg, DAddr_Reg, Ctrl_Reg, PeriAddr_Reg;
+logic [31:0] decoded_Peri_addr, config_SAddr;
 logic [3:0] config_strbs;
 logic [1:0] config_HSize, config_BurstSize;
 
@@ -48,11 +49,11 @@ assign C_config = Ctrl_Reg[16];
 
 always_comb begin
     case(DmacReq)
-        2'b01: decoded_Src_addr = 32'h0000_0000;
-        2'b10: decoded_Src_addr = 32'h0000_1000;
-        2'b11: decoded_Src_addr = 32'h0000_1000;
+        2'b01: decoded_Peri_addr = 32'h0000_0000;
+        2'b10: decoded_Peri_addr = 32'h0000_1000;
+        2'b11: decoded_Peri_addr = 32'h0000_1000;
         default: 
-            decoded_Src_addr = 32'h0000_0000;
+            decoded_Peri_addr = 32'h0000_0000;
     endcase
 end
 
@@ -66,13 +67,20 @@ always_ff @(posedge clk or posedge rst) begin
     else if (irq)
         Ctrl_Reg <= 32'b0;
     else if (SAddr_Reg_en)
-        SAddr_Reg <= decoded_Src_addr;
+        SAddr_Reg <= MRData;
     else if (DAddr_Reg_en)
         DAddr_Reg <= MRData;
     else if (Trans_sz_Reg_en)
         Size_Reg <= MRData;
     else if (Ctrl_Reg_en)
         Ctrl_Reg <= MRData;
+end
+
+always_ff @(posedge clk) begin
+    if (rst)
+        PeriAddr_Reg = 32'b0;
+    else if (PeriAddr_reg_en)
+        PeriAddr_Reg <= decoded_Peri_addr;
 end
 
 always_ff @(posedge clk or posedge rst) begin
@@ -84,9 +92,10 @@ end
 
 always_comb begin
     case(addr_inc_sel)
-        2'b00:  config_SAddr = SAddr_Reg + 32'h0000_0300;
-        2'b01:  config_SAddr = SAddr_Reg + 32'h0000_0304;
-        2'b10:  config_SAddr = SAddr_Reg + 32'h0000_0308;
+        2'b00:  config_SAddr = PeriAddr_Reg + 32'h0000_00A0;
+        2'b01:  config_SAddr = PeriAddr_Reg + 32'h0000_00A4;
+        2'b10:  config_SAddr = PeriAddr_Reg + 32'h0000_00A8;
+        2'b11:  config_SAddr = PeriAddr_Reg + 32'h0000_00AC;
     endcase
 end
 
