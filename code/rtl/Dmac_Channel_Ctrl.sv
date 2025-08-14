@@ -87,10 +87,10 @@ module channel_ctrl(
             end
 
             WRITE_WAIT: begin
-                if (channel_en && tsz && bsz)
-                    next_state = DISABLED;
-                else if (!readyIn)
+                if (!readyIn)
                     next_state = WRITE_WAIT;
+                else if (channel_en && tsz && bsz)
+                    next_state = DISABLED;
                 else if (!channel_en && readyIn)
                     next_state = HOLD_WRITE; 
                 else if (channel_en && readyIn && !bsz && (M_HResp == 0))
