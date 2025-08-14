@@ -2,3 +2,6 @@ test/
 transcript
 makefile
 vsim.wlf
+Ahb-Rtl/
+defines
+code/verif/Ahb_Dmac_tb.sv
