@@ -1,16 +1,6 @@
-// Copyright 2025 Maktab-e-Digital Systems Lahore.
-// Licensed under the Apache License, Version 2.0, see LICENSE file for details.
-// SPDX-License-Identifier: Apache-2.0
-//
-// Description: A Basic Buffer which acts as a mock peripheral for the DMAC, for ideal
-//              transfer, readyOut and HResp are kept at 1 and Okay - 00 respectively.
-//              Takes the address first, then the data and stores it in a RegFile.
-//
-// Authors: Muhammad Mouzzam and Danish Hassan 
-// Date: July 23rd, 2025
-
 module mock_ahb_peripheral #(
-    parameter MEM_DEPTH = 1024
+    parameter MEM_DEPTH = 1024,
+    parameter DELAY_CYCLES = 2 // configurable wait states
 )(
     input  logic        HCLK,
     input  logic        HRESET,
@@ -32,22 +22,25 @@ module mock_ahb_peripheral #(
     // Memory array
     logic [7:0] mem [0:MEM_DEPTH-1];
 
-    // Internal latched control signals (captured during address phase)
+    // Latched control signals
     logic [31:0] latched_addr;
     logic        latched_write;
     logic        latched_valid;
     logic [2:0]  latched_size;
     logic        latched_sel;
 
-    // Word-aligned address (256 x 32-bit memory = 8-bit address)
+    // Delay counter
+    integer delay_cnt;
+    logic   delay_active;
+
+    // Word-aligned address
     logic [9:0] addr_index;
     assign addr_index = latched_addr[9:0];
 
-    // Peripheral is always ready and always responds OKAY
-    assign HREADYOUT = 1'b1;
-    assign HRESP     = 2'b00;
+    // OKAY response
+    assign HRESP = 2'b00;
 
-    // Address Phase: Latch control signals
+    // Address Phase: latch control
     always_ff @(posedge HCLK or posedge HRESET) begin
         if (HRESET) begin
             latched_addr  <= 32'd0;
@@ -55,33 +48,46 @@ module mock_ahb_peripheral #(
             latched_valid <= 1'b0;
             latched_size  <= 3'b000;
             latched_sel   <= 1'b0;
+            delay_cnt     <= 0;
+            delay_active  <= 1'b0;
         end else if (HREADYIN) begin
-            latched_valid <= HSEL && HTRANS[1]; // Non-IDLE
+            latched_valid <= HSEL && HTRANS[1]; // NON-IDLE
             latched_addr  <= HADDR;
             latched_write <= HWRITE;
             latched_size  <= HSIZE;
             latched_sel   <= HSEL;
+
+            // Start delay when valid transfer detected
+            if (HSEL && HTRANS[1]) begin
+                delay_cnt    <= DELAY_CYCLES;
+                delay_active <= (DELAY_CYCLES > 0);
+            end
+        end else if (delay_active && delay_cnt > 0) begin
+            delay_cnt <= delay_cnt - 1;
+            if (delay_cnt == 1) delay_active <= 1'b0; // last cycle
         end
     end
 
-    // Data Phase: Perform write
+    // HREADYOUT: low during delay
+    assign HREADYOUT = !delay_active;
+
+    // Data Phase: perform write after delay
     always_ff @(posedge HCLK) begin
-        if (latched_valid && latched_sel && latched_write) begin
-            if (WSTRB[0])
-                mem[addr_index] <= HWDATA[7:0];
-            if (WSTRB[1])
-                mem[addr_index+1] <= HWDATA[15:8];
-            if (WSTRB[2])
-                mem[addr_index+2] <= HWDATA[23:16];
-            if (WSTRB[3])
-                mem[addr_index+3] <= HWDATA[31:24];
+        if (!delay_active && latched_valid && latched_sel && latched_write) begin
+            if (WSTRB[0]) mem[addr_index]   <= HWDATA[7:0];
+            if (WSTRB[1]) mem[addr_index+1] <= HWDATA[15:8];
+            if (WSTRB[2]) mem[addr_index+2] <= HWDATA[23:16];
+            if (WSTRB[3]) mem[addr_index+3] <= HWDATA[31:24];
         end
     end
 
-    // Data Phase: Perform read (combinational)
+    // Data Phase: perform read after delay
     always_comb begin
-        if (latched_valid && latched_sel && !latched_write) begin
-            HRDATA = {mem[(addr_index[9:2]*4)+3], mem[(addr_index[9:2]*4)+2], mem[(addr_index[9:2]*4)+1], mem[(addr_index[9:2]*4)]};
+        if (!delay_active && latched_valid && latched_sel && !latched_write) begin
+            HRDATA = {mem[(addr_index[9:2]*4)+3], 
+                      mem[(addr_index[9:2]*4)+2], 
+                      mem[(addr_index[9:2]*4)+1], 
+                      mem[(addr_index[9:2]*4)]};
         end else begin
             HRDATA = 32'd0;
         end
