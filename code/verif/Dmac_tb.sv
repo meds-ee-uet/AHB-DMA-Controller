@@ -19,6 +19,7 @@ module Dmac_Top_tb;
     logic [1:0] DmacReq;
     logic Bus_Grant;
 
+    logic HReady, HReadyOut_D, HReadyOut_S;
     logic [31:0] MAddress, MWData;
     logic [3:0]  MBurst_Size;
     logic MWrite;
@@ -31,12 +32,14 @@ module Dmac_Top_tb;
     logic [1:0]  temp_hsize;
     logic [3:0]  temp_Strb;
 
+    logic latched_hsel;
+
     // Clock
     always #5 clk = ~clk;
     // Instantiate DUT
     Dmac_Top dut (
         .clk(clk), .rst(rst),
-        .MRData(MRData), .HReady(1'b1), .M_HResp(HResp),
+        .MRData(MRData), .HReady(HReady), .M_HResp(HResp),
         .DmacReq(DmacReq), .Bus_Grant(Bus_Grant),
         .MAddress(MAddress), .MWData(MWData), .MBurst_Size(MBurst_Size),
         .MWrite(MWrite), .MTrans(MTrans), .Bus_Req(Bus_Req),
@@ -52,10 +55,10 @@ module Dmac_Top_tb;
         .HADDR(MAddress),
         .HTRANS(MTrans),
         .HWRITE(1'b0),
-        .HREADYIN(1'b1),
+        .HREADYIN(HReady),
         .HWDATA(32'h0),
         .HRDATA(MRData),  // Output to DMA
-        .HREADYOUT(HReadyOut),
+        .HREADYOUT(HReadyOut_S),
         .HRESP(HResp),
         .HSIZE(),
         .WSTRB()
@@ -69,14 +72,23 @@ module Dmac_Top_tb;
         .HADDR(MAddress),
         .HTRANS(MTrans),
         .HWRITE(MWrite),
-        .HREADYIN(1'b1),
+        .HREADYIN(HReady),
         .HWDATA(MWData),  // Input from DMA
         .HRDATA(),        // Not used
-        .HREADYOUT(),
+        .HREADYOUT(HReadyOut_D),
         .HRESP(),
         .HSIZE(),
         .WSTRB(MWStrb)
     );
+
+    assign HReady = latched_hsel? HReadyOut_D: HReadyOut_S;
+
+    always_ff @(posedge clk) begin
+        if (rst)
+            latched_hsel = 1'b0;
+        else if (HReady)
+            latched_hsel <= MAddress[12];
+    end
 
     always @(Interrupt) begin
         $display("Time = %0t ps, Interrupt changed to %b", $time, Interrupt);
@@ -101,7 +113,7 @@ module Dmac_Top_tb;
         source.mem[32'h0000_00A3] = 8'h00;
         source.mem[32'h0000_00A2] = 8'h00;
         source.mem[32'h0000_00A1] = 8'h00;
-        source.mem[32'h0000_00A0] = 8'h03;
+        source.mem[32'h0000_00A0] = 8'h00;
 
         source.mem[32'h0000_00A7] = 8'h00;
         source.mem[32'h0000_00A6] = 8'h00;
@@ -116,7 +128,7 @@ module Dmac_Top_tb;
         source.mem[32'h0000_00AF] = 8'h00;
         source.mem[32'h0000_00AE] = 8'h01;
         source.mem[32'h0000_00AD] = 8'h00;
-        source.mem[32'h0000_00AC] = 8'h04;
+        source.mem[32'h0000_00AC] = 8'h24;
 
         // Wait a few cycles
         repeat (5) @(posedge clk);

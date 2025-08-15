@@ -1,6 +1,6 @@
 test/
 transcript
-makefile
+# makefile
 vsim.wlf
 Ahb-Rtl/
 defines
