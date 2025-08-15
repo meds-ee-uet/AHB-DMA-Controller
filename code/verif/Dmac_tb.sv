@@ -30,7 +30,7 @@ module Dmac_Top_tb;
     logic Bus_Req, Interrupt;
     logic [1:0] ReqAck;
 
-    logic [31:0] temp_src_addr;
+    logic [31:0] temp_src_addr, temp_dst_addr, temp_trans_size;
     logic [1:0]  temp_hsize;
     logic [3:0]  temp_Strb;
 
@@ -131,13 +131,15 @@ module Dmac_Top_tb;
         @(posedge clk);
         HAddr = 32'h0000_0004;  
         HWData = 32'd18;        // Size Reg
+        temp_trans_size = HWData;
         @(posedge clk);
         HAddr = 32'h0000_0008;  
         HWData = 32'h0000_0000; // Source
-        temp_src_addr = HWData;
+        temp_src_addr = {24'b0, HWData[9:0]};
         @(posedge clk);
         HAddr = 32'h0000_000C;  
         HWData = 32'h0000_1000; // Destination
+        temp_dst_addr = {24'b0, HWData[9:0]};
 
         @(posedge clk);
         HWData = 32'h0001_0024; // Control register
@@ -184,7 +186,7 @@ module Dmac_Top_tb;
         $display("Time = %0t ps, Interrupt asserted!", $time);
         // Verify destination memory
         $display("\033[1;36mDMA transfer completed. Checking destination memory...\033[0m");
-                monitor(temp_trans_size, temp_src_addr, temp_dst_addr);
+        monitor(temp_trans_size, temp_src_addr, temp_dst_addr);
 
         $stop;
     end
