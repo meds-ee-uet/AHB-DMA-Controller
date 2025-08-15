@@ -184,16 +184,17 @@ module Dmac_Top_tb;
         $display("Time = %0t ps, Interrupt asserted!", $time);
         // Verify destination memory
         $display("\033[1;36mDMA transfer completed. Checking destination memory...\033[0m");
-        monitor(10);
+                monitor(temp_trans_size, temp_src_addr, temp_dst_addr);
+
         $stop;
     end
 
-task monitor(input logic [31:0] transfer_size);
-    for(int i = 0; i < transfer_size; i++) begin
-        $display("\033[1;36m---------Word No. %-2d---------\033[0m", i+1);
-        for (int j = 0; j < 4; j++) begin
-            if (temp_Strb[j])
-                check_byte(j+(i*4));
+task monitor(input logic [31:0] transfer_size, input logic [9:0] src_addr, dst_addr);
+    for(int i = src_addr[9:2] << 2, j = dst_addr, k = 0; k < transfer_size; i=i+4, j=j+4, k++) begin
+        $display("\033[1;36m---------Word No. %-2d---------\033[0m", k+1);
+        for (int a = i, b = j, c = 0; (a < i+4) && (b < j+4) && (c < 4); a++, b++, c++) begin
+            if (temp_Strb[c])
+                check_byte(a, b);
             else
                 $display("\033[1;35mInvalid Byte\033[0m");
         end
@@ -201,12 +202,12 @@ task monitor(input logic [31:0] transfer_size);
     $display("\033[1;35mTest Cases:\033[0m\n    \033[1;32mPassed = %d\033[0m, \033[1;31mFailed = %d\033[0m", passed, failed);
 endtask
 
-task check_byte(input int i);
-    if (source.mem[i] == dest.mem[i]) begin
-        $display("\033[1;32mPASS: {Source[%-2d] = %x} == {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
+task check_byte(input int saddr, daddr);
+    if (source.mem[saddr] == dest.mem[daddr]) begin
+        $display("\033[1;32mPASS: {Source[%-2d] = %x} == {Destination[%-2d] = %x}\033[0m", saddr, source.mem[saddr], daddr , dest.mem[daddr]);
         passed += 1;
     end else begin
-        $display("\033[1;31mFAIL: {Source[%-2d] = %x} != {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
+        $display("\033[1;31mFAIL: {Source[%-2d] = %x} != {Destination[%-2d] = %x}\033[0m", saddr, source.mem[saddr], daddr , dest.mem[daddr]);
         failed += 1;
     end
 endtask
