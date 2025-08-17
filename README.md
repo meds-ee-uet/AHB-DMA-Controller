@@ -104,7 +104,7 @@ In single mode, one data item is moved at a time. It is used when a peripheral o
 
 ## **Block Diagram/Pinout**
 <div align='center'>
-<img width=700px height=500px src='docs/DMAC_pinout.png'>
+<img width=700px height=400px src='docs/DMAC_pinout.png'>
 </div>
 
 ## **Signals:**
