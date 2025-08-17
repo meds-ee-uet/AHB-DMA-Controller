@@ -211,21 +211,31 @@ From this point onward, the DMAC re-requests bus access and, once granted, resum
 
 ## **DMAC Controller**
 ### **Internal Signals**
-| Signal         | Type   | Purpose                                                                           |
-| -------------- | ------ | --------------------------------------------------------------------------------- |
-| `irq`          | Input  | An `OR` of `irq_1` and `irq_2` of both channels                                   |
-| `con_sel`      | Output | Selector of a `mux` to output the data from the enabled channel                   |
-| `new_con_sel`  | Input  | Returning from a FlipFlop used to store the previous value of `con_sel` signal    |
-| `Bus_Req`      | Output | Signal to request access of the bus from the bus' Interconnect                    |
-| `hold`         | Output | Used to signal the CPU to configure the Slave Interface                           |
-| `Interrupt`    | Output | Signals the Completion of the current transfer                                    |
-| `c_config`     | Input  | When asserted, tells that the slave interface has been configured                 |
-| `con_en`       | Output | Enable signal for the FlipFlop to store `con_sel`                                 |
-| `channel_en_1` | Output | Enable for `Channel 1`                                                            |
-| `channel_en_2` | Output | Enable for `Channel 2`                                                            |
-| `Bus_Grant`    | Input  | Signals that the bus Request was acknowledged and bus access has been transferred |
-| `DmacReq`      | Input  | Each bit representes a request to DMAC for data transfer from each peripheral     |
-| `ReqAck`       | Output | Each bit is an Request Ackhnowledgment signal for each peripheral                 |
+| Signal            | Type   | Purpose                                                                 |
+| ----------------- | ------ | ----------------------------------------------------------------------- |
+| `irq`             | Input  | OR of `irq_1` and `irq_2` from both channels, indicates transfer done   |
+| `con_sel`         | Output | Selector of a mux to output the data from the enabled channel           |
+| `con_new_sel`     | Input  | Feedback from Flip-Flop storing previous value of `con_sel`              |
+| `Bus_Req`         | Output | Signal to request access of the bus from the bus' Interconnect          |
+| `Bus_Grant`       | Input  | Signals that the bus Request was acknowledged and bus access granted    |
+| `Interrupt`       | Output | Signals the Completion of the current transfer                          |
+| `c_config`        | Input  | When asserted, tells that the slave interface has been configured       |
+| `con_en`          | Output | Enable signal for the Flip-Flop to store `con_sel`                      |
+| `Channel_en_1`    | Output | Enable for Channel 1                                                    |
+| `Channel_en_2`    | Output | Enable for Channel 2                                                    |
+| `DmacReq`         | Input  | Each bit represents a request to DMAC for data transfer from peripheral |
+| `ReqAck`          | Output | Each bit is a Request Acknowledgment signal for each peripheral         |
+| `DmacReq_Reg_en`  | Output | Enable to latch `DmacReq` into `DmacReq_Reg`                            |
+| `SAddr_Reg_en`    | Output | Enable for Source Address Register                                      |
+| `DAddr_Reg_en`    | Output | Enable for Destination Address Register                                 |
+| `Trans_sz_Reg_en` | Output | Enable for Transfer Size Register                                       |
+| `Ctrl_Reg_en`     | Output | Enable for Control Register                                             |
+| `PeriAddr_reg_en` | Output | Enable for Peripheral Address Register                                  |
+| `addr_inc_sel`    | Output | Selector for address increment scheme (Src/Dst/TSize/Ctrl sequence)     |
+| `config_write`    | Output | Write enable during configuration phase                                 |
+| `config_HTrans`   | Output | Transfer type during configuration (Idle, Busy, Non_Seq, Seq)           |
+| `HReady`          | Input  | Indicates bus is ready for the next transfer                            |
+
 ### **State Transition Graph:**
 <div align='center'>
   <img src='docs/DMAC_main_stg.png'>
