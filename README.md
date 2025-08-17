@@ -92,17 +92,11 @@ In single mode, one data item is moved at a time. It is used when a peripheral o
 - FIFO depth in Each Channel: 16 words
 - Supported Peripherals/Slaves: 2
 - Capable of Burst and Single transfer
-- Slave Interface: For DMAC Configuration
   - 4 32-bit Registers:
     - Control Register - `Ctrl_Reg `
     - Size Register - `Size_Reg`
     - Source Address Register -  `SAddr_Reg`
     - Destination Address Register - `DAddr_Reg`
-  - Registers are memory mapped. Offsets are as follows:
-    - `SAddr_Reg`: `0x4`
-    - `DAddr_Reg`: `0x8`
-    - `Size_Reg`: `0x0`
-    - `Ctrl_Reg`: `0xC`
 - Request and Response Interface: For peripherals
 - If CPU asks for bus access, burst transfer is halted until bus access is granted again.
 
@@ -114,16 +108,6 @@ In single mode, one data item is moved at a time. It is used when a peripheral o
 </div>
 
 ## **Signals:**
-### ***Slave Interface***
-| Signals     | Type   | Width | Purpose                                                                                 |
-| ----------- | ------ | ----- | --------------------------------------------------------------------------------------- |
-| `HWData`    | Input  | 32    | Data to be processed/stored by the slave interface                                      |
-| `HAddr`     | Input  | 32    | Address to store data in slave                                                          |
-| `HSel`      | Input  | 1     | Tells the Slave that it's been selected as slave for a transaction                      |
-| `Write`     | Input  | 1     | Tells the nature of the transfer                                                        |
-| `STrans`    | Input  | 2     | Tells the state of the current request on the bus (Encodings: Idle, Busy, Seq, Non-Seq) |
-| `HReadyOut` | Output | 1     | Signals to master that the transfer is complete                                         |
-| `S_HResp`   | Output | 2     | Tells master if the transfer was successful or not                                      |
 
 ### ***Request and Response Interface***
 | `Signals` | Type   | Width | Purpose                                            |
@@ -134,7 +118,6 @@ In single mode, one data item is moved at a time. It is used when a peripheral o
 ### ***Control and Interrupt Interface***
 | Signals     | Type   | Width | Purpose                                          |
 | ----------- | ------ | ----- | ------------------------------------------------ |
-| `Hold`      | Output | 1     | Signals CPU to stop and configure the DMAC Slave |
 | `Interrupt` | Output | 1     | Signals to CPU that transfer is complete         |
 
 ### ***Master Interface***
@@ -159,30 +142,59 @@ This DMAC has been designed as to follow a certain pipeline to complete the tran
 </div>
 
 ### **Request from Peripheral**
-First of all, peripheral requests for a transfer to DMAC.
-1. Priority is given to the `DmacReq[1]` which Enables `Channel 1` to handle the transfer.
-2. If both bits of DmacReq are asserted, DMAC ignores `DmacReq[0]` signal and doesn't assert its request acknowledge signal `ReqAck[1]`.
-3. `Channel 2` is used for `DmacReq[0]`.
-Depending upon this priority, the state then changes to either `MSB Req` or `LSB Req`.
+
+When a peripheral issues a transfer request to the DMAC, the DMAC automatically stores the peripheral’s base address into the Peripheral Address Register (`peri_addr_reg`). This allows the DMAC to configure itself for the transfer. In addition, the request bits are stored in a register (`DmacReq_Reg`) for later use in enabling the corresponding channels.
+
+1. **Channel Priority**
+   - `DmacReq[1]` has the highest priority and enables `Channel 1` to handle the transfer.
+   - If both request signals are asserted simultaneously, the DMAC ignores `DmacReq[0]` and does not assert its corresponding request acknowledge signal `ReqAck[1]`. The requesting slave(s) must hold its/their request(s) active until the acknowledgement signal is received.
+   - `Channel 2` is assigned to service `DmacReq[0]`.
+
+2. **Bus Request**
+Once a valid peripheral request is detected, the DMAC asserts the Bus Request (`Bus_Req`) signal to the AHB arbiter to request access to the bus. This signal remains asserted for the entire transfer to ensure bus ownership, even if a higher-priority master attempts to acquire the bus.
+
+1. **Bus Arbitration**
+After being triggered by the peripheral, control transitions to the Bus Request (`Bus Reqd.`) state. In this state, the DMAC waits until the arbiter asserts Bus Grant (`Bus_Grant`), granting bus access and allowing the transfer to proceed.
 
 ---
 
-### **Slave Configuration**
-After the Request, DMAC asserts Hold and waits for CPU to configure the Slave Interface. Along with Hold, DMAC also Requests for Bus. Bus Request remains asserted until Bus is granted.
-1. The Sequence in which slave registers should be configured are:
-   1. `Size_Reg`
-   2. `SAddr_Reg`
-   3. `DAddr_Reg`
-   4. `Ctrl_Reg`
-2. Control Register Contains a `c_config` bit which, when asserted, tells the DMAC that its Slave has been configured. `Ctrl Reg` is Reset (to zero) after `irq` is generated by the channel.
-3. Slave Gets Configured, i.e. `c_config` signal gets asserted.
-4. DMAC waits for Bus Grant.
+### **DMAC Configuration**
+
+Once the bus is granted, the DMAC utilizes the peripheral’s base address (previously stored in `peri_addr_reg`) to generate read requests to the peripheral. The offsets corresponding to the configuration registers within the peripheral are added to the base address to access each register. All peripherals must implement identical offsets for their configuration registers to ensure uniform access.
+
+During this, the `con_sel` signal is set to `2` which takes the requests directly to the master interface without passing through any channel.
+
+The data fetched from the peripheral is stored into the corresponding DMAC configuration registers. Each register has an associated wait state during which the DMAC pauses until the read completes:
+- `Wait for Src`: Wait state for `SAddr_Reg`
+- `W ait for Dst`: Wait state for `DAddr_Reg`
+- `Wait for Trans. Size`: Wait state for `Size_Reg`
+- `Wait for Ctrl`: Wait state for `Ctrl_Reg`
+
+The sequence of configuration is strictly defined as follows:
+- `SAddr_Reg`
+- `DAddr_Reg`
+- `Size_Reg`
+- `Ctrl_Reg`
+
+Accordingly, control transitions from the Bus Request (`Bus Reqd.`) state to Wait for Src, and then proceeds sequentially through each wait state until `Wait for Ctrl` is reached.
+During transition from `Bus Reqd.` to `Wait for Src` the corresponding bit of `ReqAck` signal, according to the Request bits stored in `DmacReq_Reg`.
 
 ---
 
 ### **Enabling Channels**
-1. After the DMAC is granted the bus, DMAC asserts the `ReqAck`bit corresponding to the `DmacReq` bit which results in deassertion of `DmacReq` bit by the slave/peripheral. The state then transits to `Wait`.
-2. Corresponding to `DmacReq`, the channel is enabled i.e. `Channel 1` is used for `DmacReq[1]` and has the highest priority.Whereas, `Channel 2` is for `DmacReq[0]` bit.
+
+After the DMAC has been configured, it uses the stored request bits in `DmacReq_Reg` to enable the corresponding channel for data transfer. To do that, based on the value of `DmacReq_Reg`, control transitions to one of the following states:  
+
+- `MSB_Req`: Entered when `DmacReq_Reg[1]` is asserted.  
+- `LSB_Req`: Entered when `DmacReq_Reg` is set to `01`.  
+
+In these states, the respective channel is activated to carry out the transfer:  
+- `Channel 1` is enabled when `DmacReq_Reg[1]` is active.  
+- `Channel 2` is enabled when `DmacReq_Reg[0]` is active.
+
+Once the channel is enabled, control transitions to the `Wait` state by enabling the channel, where the DMAC waits for the transfer to complete. If, during this process, the AHB arbiter deasserts `Bus_Grant`, the DMAC relinquishes bus ownership and the transfer is temporarily halted and channel enable is deasserted. Control then returns to either `MSB_Req` or `LSB_Req`, depending on which channel was active. This is determined using the `new_con_sel` signal, which records the previously selected channel.
+
+From this point onward, the DMAC re-requests bus access and, once granted, resumes the transfer until completion. 
 
 ---
 

@@ -19,6 +19,7 @@ module Dmac_Top_tb;
     logic [1:0] DmacReq;
     logic Bus_Grant;
 
+    logic HReady, HReadyOut_D, HReadyOut_S;
     logic [31:0] MAddress, MWData;
     logic [3:0]  MBurst_Size;
     logic MWrite;
@@ -27,16 +28,18 @@ module Dmac_Top_tb;
     logic Bus_Req, Interrupt;
     logic [1:0] ReqAck;
 
-    logic [31:0] temp_src_addr;
+    logic [9:0] temp_src_addr, temp_dst_addr, temp_trans_size;
     logic [1:0]  temp_hsize;
     logic [3:0]  temp_Strb;
+
+    logic latched_hsel;
 
     // Clock
     always #5 clk = ~clk;
     // Instantiate DUT
     Dmac_Top dut (
         .clk(clk), .rst(rst),
-        .MRData(MRData), .HReady(1'b1), .M_HResp(HResp),
+        .MRData(MRData), .HReady(HReady), .M_HResp(HResp),
         .DmacReq(DmacReq), .Bus_Grant(Bus_Grant),
         .MAddress(MAddress), .MWData(MWData), .MBurst_Size(MBurst_Size),
         .MWrite(MWrite), .MTrans(MTrans), .Bus_Req(Bus_Req),
@@ -52,10 +55,10 @@ module Dmac_Top_tb;
         .HADDR(MAddress),
         .HTRANS(MTrans),
         .HWRITE(1'b0),
-        .HREADYIN(1'b1),
+        .HREADYIN(HReady),
         .HWDATA(32'h0),
         .HRDATA(MRData),  // Output to DMA
-        .HREADYOUT(HReadyOut),
+        .HREADYOUT(HReadyOut_S),
         .HRESP(HResp),
         .HSIZE(),
         .WSTRB()
@@ -69,14 +72,23 @@ module Dmac_Top_tb;
         .HADDR(MAddress),
         .HTRANS(MTrans),
         .HWRITE(MWrite),
-        .HREADYIN(1'b1),
+        .HREADYIN(HReady),
         .HWDATA(MWData),  // Input from DMA
         .HRDATA(),        // Not used
-        .HREADYOUT(),
+        .HREADYOUT(HReadyOut_D),
         .HRESP(),
         .HSIZE(),
         .WSTRB(MWStrb)
     );
+
+    assign HReady = latched_hsel? HReadyOut_D: HReadyOut_S;
+
+    always_ff @(posedge clk) begin
+        if (rst)
+            latched_hsel = 1'b0;
+        else if (HReady)
+            latched_hsel <= MAddress[12];
+    end
 
     always @(Interrupt) begin
         $display("Time = %0t ps, Interrupt changed to %b", $time, Interrupt);
@@ -101,7 +113,7 @@ module Dmac_Top_tb;
         source.mem[32'h0000_00A3] = 8'h00;
         source.mem[32'h0000_00A2] = 8'h00;
         source.mem[32'h0000_00A1] = 8'h00;
-        source.mem[32'h0000_00A0] = 8'h03;
+        source.mem[32'h0000_00A0] = 8'h00;
 
         source.mem[32'h0000_00A7] = 8'h00;
         source.mem[32'h0000_00A6] = 8'h00;
@@ -116,21 +128,23 @@ module Dmac_Top_tb;
         source.mem[32'h0000_00AF] = 8'h00;
         source.mem[32'h0000_00AE] = 8'h01;
         source.mem[32'h0000_00AD] = 8'h00;
-        source.mem[32'h0000_00AC] = 8'h04;
+        source.mem[32'h0000_00AC] = 8'h24;
 
         // Wait a few cycles
         repeat (5) @(posedge clk);
         rst = 0;
 
-        temp_src_addr = {source.mem[32'h0000_00A3], source.mem[32'h0000_00A2], source.mem[32'h0000_00A1], source.mem[32'h0000_00A0]};
+        temp_src_addr = {source.mem[32'h0000_00A1][1:0], source.mem[32'h0000_00A0]};
+        temp_dst_addr = {source.mem[32'h0000_00A5][1:0], source.mem[32'h0000_00A4]};
+        temp_trans_size = {24'b0, source.mem[32'h0000_00A8]};
         temp_hsize = source.mem[32'h0000_00AC][7:4];
+
 
         // Request from Peripheral 
         @(posedge clk);
         DmacReq = 2'b01;
         // Program DMA channel via CPU-like interface
 
-        @(posedge clk);
         case (temp_hsize)
             2'b00: begin  // Byte
                 case (temp_src_addr[1:0])
@@ -155,24 +169,33 @@ module Dmac_Top_tb;
         // Grant bus to DMA
         @(posedge clk);
         Bus_Grant = 1;
-        DmacReq = 2'b0;
+        
+        wait(ReqAck != 2'b00);
+
+        if (ReqAck[1])
+            DmacReq[1] = 1'b0;
+        else if(ReqAck[0])
+            DmacReq[0] = 1'b0;
 
         // Wait until transfer is done
         wait (Interrupt == 1);
+
         repeat(2) @(posedge clk)
         $display("Time = %0t ps, Interrupt asserted!", $time);
+
         // Verify destination memory
         $display("\033[1;36mDMA transfer completed. Checking destination memory...\033[0m");
-        monitor(18);
+        monitor(temp_trans_size, temp_src_addr, temp_dst_addr);
+
         $stop;
     end
 
-task monitor(input logic [31:0] transfer_size);
-    for(int i = 0; i < transfer_size; i++) begin
-        $display("\033[1;36m---------Word No. %-2d---------\033[0m", i+1);
-        for (int j = 0; j < 4; j++) begin
-            if (temp_Strb[j])
-                check_byte(j+(i*4));
+task monitor(input logic [31:0] transfer_size, input logic [9:0] src_addr, dst_addr);
+    for(int i = src_addr[9:2] << 2, j = dst_addr, k = 0; k < transfer_size; i=i+4, j=j+4, k++) begin
+        $display("\033[1;36m---------Word No. %-2d---------\033[0m", k+1);
+        for (int a = i, b = j, c = 0; (a < i+4) && (b < j+4) && (c < 4); a++, b++, c++) begin
+            if (temp_Strb[c])
+                check_byte(a, b);
             else
                 $display("\033[1;35mInvalid Byte\033[0m");
         end
@@ -180,12 +203,12 @@ task monitor(input logic [31:0] transfer_size);
     $display("\033[1;35mTest Cases:\033[0m\n    \033[1;32mPassed = %d\033[0m, \033[1;31mFailed = %d\033[0m", passed, failed);
 endtask
 
-task check_byte(input int i);
-    if (source.mem[i] == dest.mem[i]) begin
-        $display("\033[1;32mPASS: {Source[%-2d] = %x} == {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
+task check_byte(input int saddr, daddr);
+    if (source.mem[saddr] == dest.mem[daddr]) begin
+        $display("\033[1;32mPASS: {Source[%-2d] = %x} == {Destination[%-2d] = %x}\033[0m", saddr, source.mem[saddr], daddr , dest.mem[daddr]);
         passed += 1;
     end else begin
-        $display("\033[1;31mFAIL: {Source[%-2d] = %x} != {Destination[%-2d] = %x}\033[0m", i, source.mem[i], i , dest.mem[i]);
+        $display("\033[1;31mFAIL: {Source[%-2d] = %x} != {Destination[%-2d] = %x}\033[0m", saddr, source.mem[saddr], daddr , dest.mem[daddr]);
         failed += 1;
     end
 endtask
