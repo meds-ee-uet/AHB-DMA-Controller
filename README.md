@@ -245,6 +245,11 @@ From this point onward, the DMAC re-requests bus access and, once granted, resum
 | State     | Purpose                                                                          |
 | --------- | -------------------------------------------------------------------------------- |
 | `Idle`    | The which indicates the DMAC is not handling any Requests                        |
+| `BUS_REQD`          | DMAC has latched the request and asserts `Bus_Req`, waits for `Bus_Grant` and sends read request to peripheral for reading the Source Address.   |
+| `WAIT_FOR_SRC`      | Fetches and writes the **Source Address Register** once the bus is granted.   |
+| `WAIT_FOR_DST`      | Fetches and writes the **Destination Address Register**.                                |
+| `WAIT_FOR_TRANS_SIZE` | Configures the **Transfer Size Register** for the data transfer.                           |
+| `WAIT_FOR_CTRL`     | Configures the **Control Register** of DMAC, decides whether MSB or LSB request to serve.   |
 | `MSB Req` | State indicating that the peripheral with a higher priority has made the request |
 | `LSB`     | State indicating that the peripheral with a lower priority has made the request  |
 | `Wait`    | A wait state until the transfer is complete                                      |
