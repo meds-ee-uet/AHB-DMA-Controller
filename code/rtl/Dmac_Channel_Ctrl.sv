@@ -164,14 +164,17 @@ module channel_ctrl(
             end
 
             READ_WAIT: begin
-                if (!readyIn) begin
+                if (!readyIn && bsz) begin
                     write     = 0;
                     HTrans    = BUSY;
+                    h_sel = 1;
                 end else if (!channel_en && readyIn) begin
                     wr_en = 1;
                     HTrans = IDLE;
-                end
-                else if (channel_en && readyIn && (M_HResp == 0) && !bsz)  begin
+                end else if (!readyIn) begin
+                    write = 0;
+                    HTrans = BUSY;
+                end else if (channel_en && readyIn && (M_HResp == 0) && !bsz)  begin
                     write     = 0;
                     wr_en     = 1;
                     count_en  = 1;
@@ -206,13 +209,20 @@ module channel_ctrl(
             end
             
             WRITE_WAIT: begin
-                if (!readyIn) begin
+                if (!readyIn && bsz) begin
                     write     = 1;
                     HTrans    = BUSY;
+                    h_sel = 0;
+                    trigger = 1;
                 end else if (!channel_en && readyIn) begin
                     rd_en = 1;
                     trigger = 1;
                     HTrans = IDLE;
+                end else if (!readyIn) begin
+                    h_sel = 1;
+                    trigger = 1;
+                    HTrans = BUSY;
+                    write = 1;
                 end else if (channel_en && tsz && bsz) begin
                     irq = 1;
                     rd_en = 1;
