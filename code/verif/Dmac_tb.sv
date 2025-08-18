@@ -32,7 +32,8 @@ module Dmac_Top_tb;
     logic [1:0]  temp_hsize;
     logic [3:0]  temp_Strb;
 
-    logic latched_hsel;
+    logic [1:0] latched_hsel;
+    logic [1:0] selected_hsel;
 
     // Clock
     always #5 clk = ~clk;
@@ -51,7 +52,7 @@ module Dmac_Top_tb;
     mock_ahb_peripheral #(.MEM_DEPTH(256)) source (
         .HCLK(clk),
         .HRESET(rst),
-        .HSEL(MAddress[12] == 1'b0),
+        .HSEL(selected_hsel[1]),
         .HADDR(MAddress),
         .HTRANS(MTrans),
         .HWRITE(1'b0),
@@ -68,7 +69,7 @@ module Dmac_Top_tb;
     mock_ahb_peripheral #(.MEM_DEPTH(256)) dest (
         .HCLK(clk),
         .HRESET(rst),
-        .HSEL(MAddress[12] == 1'b1),
+        .HSEL(selected_hsel[0]),
         .HADDR(MAddress),
         .HTRANS(MTrans),
         .HWRITE(MWrite),
@@ -81,17 +82,66 @@ module Dmac_Top_tb;
         .WSTRB(MWStrb)
     );
 
-    assign HReady = latched_hsel? HReadyOut_D: HReadyOut_S;
+    always_comb begin
+        if (latched_hsel == 2'b10)
+            HReady = HReadyOut_S;
+        else if (latched_hsel == 2'b01)
+            HReady = HReadyOut_D;
+        else if (latched_hsel == 2'b00)
+            HReady = 1'b1;
+    end
+
+    int check = 0;
+    int count = 0;
 
     always_ff @(posedge clk) begin
         if (rst)
-            latched_hsel = 1'b0;
+            latched_hsel = 2'b0;
         else if (HReady)
-            latched_hsel <= MAddress[12];
+            latched_hsel <= selected_hsel;
     end
 
     always @(Interrupt) begin
         $display("Time = %0t ps, Interrupt changed to %b", $time, Interrupt);
+    end
+
+    assign selected_hsel = (MAddress[12]) ? 2'b01: 2'b10;
+
+    always_comb begin
+        if (dut.DmacReq_Reg[1]) begin
+            temp_src_addr = {dest.mem[32'h0000_00A1][1:0], dest.mem[32'h0000_00A0]};
+            temp_dst_addr = {dest.mem[32'h0000_00A5][1:0], dest.mem[32'h0000_00A4]};
+            temp_trans_size = {24'b0, dest.mem[32'h0000_00A8]};
+            temp_hsize = dest.mem[32'h0000_00AC][7:4];
+        end else if(dut.DmacReq_Reg == 2'b01) begin    
+            temp_src_addr = {source.mem[32'h0000_00A1][1:0], source.mem[32'h0000_00A0]};
+            temp_dst_addr = {source.mem[32'h0000_00A5][1:0], source.mem[32'h0000_00A4]};
+            temp_trans_size = {24'b0, source.mem[32'h0000_00A8]};
+            temp_hsize = source.mem[32'h0000_00AC][7:4];
+        end
+    end
+
+    always_comb begin
+        case (temp_hsize)
+            2'b00: begin  // Byte
+                case (temp_src_addr[1:0])
+                    2'b00: temp_Strb = 4'b0001;
+                    2'b01: temp_Strb = 4'b0010;
+                    2'b10: temp_Strb = 4'b0100;
+                    2'b11: temp_Strb = 4'b1000;
+                    default: temp_Strb = 4'b0000;
+                endcase
+            end
+            2'b01: begin  // Halfword
+                case (temp_src_addr[1:0])
+                    2'b00: temp_Strb = 4'b0011;  
+                    2'b10: temp_Strb = 4'b1100;
+                    default: temp_Strb = 4'b0000; 
+                endcase
+            end
+            2'b10: temp_Strb = 4'b1111;  // Word — all bytes active
+            default: temp_Strb = 4'b0000;
+        endcase
     end
 
     int passed = 0;
@@ -107,6 +157,10 @@ module Dmac_Top_tb;
 
         for (int i = 0; i < 72; i++) begin
             source.mem[i] = i+i;
+        end
+
+        for (int i = 72; i < 144; i++) begin
+            dest.mem[i-72] = i+i;
         end
 
 
@@ -130,14 +184,33 @@ module Dmac_Top_tb;
         source.mem[32'h0000_00AD] = 8'h00;
         source.mem[32'h0000_00AC] = 8'h24;
 
+        // 2nd peripheral configuration
+
+        dest.mem[32'h0000_00A3] = 8'h00;
+        dest.mem[32'h0000_00A2] = 8'h00;
+        dest.mem[32'h0000_00A1] = 8'h10;
+        dest.mem[32'h0000_00A0] = 8'h00;
+
+        dest.mem[32'h0000_00A7] = 8'h00;
+        dest.mem[32'h0000_00A6] = 8'h00;
+        dest.mem[32'h0000_00A5] = 8'h00;
+        dest.mem[32'h0000_00A4] = 8'h00;
+
+        dest.mem[32'h0000_00AB] = 8'h00;
+        dest.mem[32'h0000_00AA] = 8'h00;
+        dest.mem[32'h0000_00A9] = 8'h00;
+        dest.mem[32'h0000_00A8] = 8'd18;
+
+        dest.mem[32'h0000_00AF] = 8'h00;
+        dest.mem[32'h0000_00AE] = 8'h01;
+        dest.mem[32'h0000_00AD] = 8'h00;
+        dest.mem[32'h0000_00AC] = 8'h24;
+
         // Wait a few cycles
         repeat (5) @(posedge clk);
         rst = 0;
 
-        temp_src_addr = {source.mem[32'h0000_00A1][1:0], source.mem[32'h0000_00A0]};
-        temp_dst_addr = {source.mem[32'h0000_00A5][1:0], source.mem[32'h0000_00A4]};
-        temp_trans_size = {24'b0, source.mem[32'h0000_00A8]};
-        temp_hsize = source.mem[32'h0000_00AC][7:4];
+
 
 
         // Request from Peripheral 
@@ -145,26 +218,26 @@ module Dmac_Top_tb;
         DmacReq = 2'b01;
         // Program DMA channel via CPU-like interface
 
-        case (temp_hsize)
-            2'b00: begin  // Byte
-                case (temp_src_addr[1:0])
-                    2'b00: temp_Strb = 4'b0001;
-                    2'b01: temp_Strb = 4'b0010;
-                    2'b10: temp_Strb = 4'b0100;
-                    2'b11: temp_Strb = 4'b1000;
-                    default: temp_Strb = 4'b0000;
-                endcase
-            end
-            2'b01: begin  // Halfword
-                case (temp_src_addr[1:0])
-                    2'b00: temp_Strb = 4'b0011;  
-                    2'b10: temp_Strb = 4'b1100;
-                    default: temp_Strb = 4'b0000; 
-                endcase
-            end
-            2'b10: temp_Strb = 4'b1111;  // Word — all bytes active
-            default: temp_Strb = 4'b0000;
-        endcase
+        // case (temp_hsize)
+        //     2'b00: begin  // Byte
+        //         case (temp_src_addr[1:0])
+        //             2'b00: temp_Strb = 4'b0001;
+        //             2'b01: temp_Strb = 4'b0010;
+        //             2'b10: temp_Strb = 4'b0100;
+        //             2'b11: temp_Strb = 4'b1000;
+        //             default: temp_Strb = 4'b0000;
+        //         endcase
+        //     end
+        //     2'b01: begin  // Halfword
+        //         case (temp_src_addr[1:0])
+        //             2'b00: temp_Strb = 4'b0011;  
+        //             2'b10: temp_Strb = 4'b1100;
+        //             default: temp_Strb = 4'b0000; 
+        //         endcase
+        //     end
+        //     2'b10: temp_Strb = 4'b1111;  // Word — all bytes active
+        //     default: temp_Strb = 4'b0000;
+        // endcase
 
         // Grant bus to DMA
         @(posedge clk);
@@ -178,7 +251,13 @@ module Dmac_Top_tb;
             DmacReq[0] = 1'b0;
 
         // Wait until transfer is done
-        wait (Interrupt == 1);
+        
+        while (!check) begin
+            wait (Interrupt == 1)
+            @(negedge clk)
+            if (Interrupt == 1)
+                check = 1;
+        end
 
         repeat(2) @(posedge clk)
         $display("Time = %0t ps, Interrupt asserted!", $time);
@@ -195,7 +274,7 @@ task monitor(input logic [31:0] transfer_size, input logic [9:0] src_addr, dst_a
         $display("\033[1;36m---------Word No. %-2d---------\033[0m", k+1);
         for (int a = i, b = j, c = 0; (a < i+4) && (b < j+4) && (c < 4); a++, b++, c++) begin
             if (temp_Strb[c])
-                check_byte(a, b);
+                check_byte(a, b, !dut.DmacReq_Reg[1]);
             else
                 $display("\033[1;35mInvalid Byte\033[0m");
         end
@@ -203,12 +282,26 @@ task monitor(input logic [31:0] transfer_size, input logic [9:0] src_addr, dst_a
     $display("\033[1;35mTest Cases:\033[0m\n    \033[1;32mPassed = %d\033[0m, \033[1;31mFailed = %d\033[0m", passed, failed);
 endtask
 
-task check_byte(input int saddr, daddr);
-    if (source.mem[saddr] == dest.mem[daddr]) begin
-        $display("\033[1;32mPASS: {Source[%-2d] = %x} == {Destination[%-2d] = %x}\033[0m", saddr, source.mem[saddr], daddr , dest.mem[daddr]);
+task check_byte(input int saddr, daddr, input bit dir);
+    byte sdata, ddata;
+    if (dir == 0) begin
+        // Source -> Dest
+        sdata = source.mem[saddr];
+        ddata = dest.mem[daddr];
+    end else begin
+        // Dest -> Source
+        sdata = dest.mem[saddr];
+        ddata = source.mem[daddr];
+    end
+    if (sdata == ddata) begin
+        $display("\033[1;32mPASS: {[%0s][%-2d] = %x} == {[%0s][%-2d] = %x}\033[0m",
+                 (dir==1)?"Source":"Dest", (dir==1)?saddr:daddr, ddata,
+                 (dir==1)?"Dest":"Source", (dir==1)?daddr:saddr, sdata);
         passed += 1;
     end else begin
-        $display("\033[1;31mFAIL: {Source[%-2d] = %x} != {Destination[%-2d] = %x}\033[0m", saddr, source.mem[saddr], daddr , dest.mem[daddr]);
+        $display("\033[1;31mFAIL: {[%0s][%-2d] = %x} != {[%0s][%-2d] = %x}\033[0m",
+                 (dir==1)?"Source":"Dest", (dir==1)?saddr:daddr, ddata,
+                 (dir==1)?"Dest":"Source", (dir==1)?daddr:saddr, sdata);
         failed += 1;
     end
 endtask
