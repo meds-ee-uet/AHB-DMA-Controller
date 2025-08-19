@@ -416,6 +416,26 @@ To thoroughly verify the DMAC's functionality, a Mock AHB Peripheral was designe
 
 ## **Waveforms**
 
+### Dmac Configuration 
+Once the DMAC receives the Bus_Grant, the peripheral begins configuring the DMAC. A base address corresponding to that peripheral is already stored in the `peri_addr_reg`, and from this base, four specific offsets are used to configure the `SAddr_Reg`, `DAddr_Reg`, `Size_Reg`, and `Ctrl_Reg`. To better reflect realistic peripheral behavior, the peripheral introduces an intentional delay of two cycles while providing these configuration values. After this delay, the DMAC captures the data and stores it into the respective registers.
+
+<div align='center'>
+<img src='docs/Config_Sim.jpg'>
+</div>
+
+### Dmac Reading 
+Here the DMAC writes data to the peripheral in bursts of 4, with the peripheral introducing an intentional 2-clock-cycle wait before accepting each write.
+<div align='center'>
+<img src='docs/Read_Sim.jpg'>
+</div>
+
+### Dmac Writing 
+Here the DMAC writes data to the peripheral in bursts of 4, with an intentional 2-clock-cycle wait.
+<div align='center'>
+<img src='docs/Write_Sim.jpg'>
+</div>
+
+
 ### DmacReq - 01
 In this image, the `DmacReq` signal was `01`, so `Channel 2` was enabled and Interrupt was generated transfer was complete. The last 2 `word` as seen in the image are transferred via single word transfer while the remaining in bursts. `HSize` was kept as `byte` and the address offset was `3`.
 <div align='center'>
