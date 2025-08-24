@@ -191,7 +191,7 @@ module Dmac_Top_tb;
         dest.mem[32'h0000_00A3] = 8'h10;
         dest.mem[32'h0000_00A2] = 8'h00;
         dest.mem[32'h0000_00A1] = 8'h00;
-        dest.mem[32'h0000_00A0] = 8'h00;
+        dest.mem[32'h0000_00A0] = 8'h04;
 
         dest.mem[32'h0000_00A7] = 8'h00;
         dest.mem[32'h0000_00A6] = 8'h00;
@@ -217,7 +217,7 @@ module Dmac_Top_tb;
 
         // Request from Peripheral 
         @(posedge clk);
-        DmacReq = 2'b01;
+        DmacReq = 2'b11;
         // Program DMA channel via CPU-like interface
 
         // case (temp_hsize)
@@ -276,7 +276,7 @@ task monitor(input logic [31:0] transfer_size, input logic [9:0] src_addr, dst_a
         $display("\033[1;36m---------Word No. %-2d---------\033[0m", k+1);
         for (int a = i, b = j, c = 0; (a < i+4) && (b < j+4) && (c < 4); a++, b++, c++) begin
             if (temp_Strb[c])
-                check_byte(a, b, !dut.DmacReq_Reg[1]);
+                check_byte(a, b, dut.DmacReq_Reg[1]? dest.mem[32'h0000_00A3][4] ? 1:0 : source.mem[32'h0000_00A3][4] ? 1:0);
             else
                 $display("\033[1;35mInvalid Byte\033[0m");
         end
