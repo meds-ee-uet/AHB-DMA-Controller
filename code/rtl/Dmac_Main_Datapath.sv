@@ -41,6 +41,7 @@ logic [31:0] Size_Reg, SAddr_Reg, DAddr_Reg, Ctrl_Reg, PeriAddr_Reg;
 logic [31:0] decoded_Peri_addr, config_SAddr;
 logic [3:0] config_strbs;
 logic [1:0] config_HSize, config_BurstSize;
+logic [4:0] decoded_BurstSize;
 
 assign config_HSize = 2'b10;
 assign config_BurstSize = 2'b01;
@@ -50,10 +51,20 @@ assign C_config = Ctrl_Reg[16];
 always_comb begin
     case(DmacReq)
         2'b01: decoded_Peri_addr = 32'h0000_0000;
-        2'b10: decoded_Peri_addr = 32'h0000_1000;
-        2'b11: decoded_Peri_addr = 32'h0000_1000;
+        2'b10: decoded_Peri_addr = 32'h1000_0000;
+        2'b11: decoded_Peri_addr = 32'h1000_0000;
         default: 
-            decoded_Peri_addr = 32'h0000_1000;
+            decoded_Peri_addr = 32'h0000_0000;
+    endcase
+end
+
+always_comb begin
+    case(Ctrl_Reg[3:0])
+        4'b0000: decoded_BurstSize = 5'b00001; // INCR
+        4'b0001: decoded_BurstSize = 5'b00100; // INCR4
+        4'b0010: decoded_BurstSize = 5'b01000; // INCR8
+        4'b0011: decoded_BurstSize = 5'b10000; // INCR16
+        default: decoded_BurstSize = 5'b00001; // INCR
     endcase
 end
 
@@ -85,7 +96,7 @@ end
 
 always_ff @(posedge clk or posedge rst) begin
     if(rst)
-        DmacReq_Reg = 32'b0;
+        DmacReq_Reg = 2'b0;
     else if (DmacReq_Reg_en)
         DmacReq_Reg <= DmacReq;
 end
@@ -107,6 +118,7 @@ logic [1:0]  MTrans_1;
 logic [31:0] MAddress_1;
 logic [31:0] MWData_1;
 logic [3:0] MWStrb_1;
+logic [1:0] MBurst_Size_1;
 
 Dmac_Channel channel_1 (
     .clk(clk),
@@ -117,7 +129,7 @@ Dmac_Channel channel_1 (
     .S_Address(SAddr_Reg),
     .D_Address(DAddr_Reg),
     .T_Size(Size_Reg),
-    .B_Size({{28{1'b0}}, {Ctrl_Reg[3:0]}}),
+    .B_Size({{27{1'b0}}, {decoded_BurstSize}}),
     .R_Data(MRData),
     .HSize(Ctrl_Reg[5:4]),
 
@@ -126,7 +138,8 @@ Dmac_Channel channel_1 (
     .HTrans(MTrans_1),
     .MAddress(MAddress_1),
     .MWData(MWData_1),
-    .MWStrb(MWStrb_1)
+    .MWStrb(MWStrb_1),
+    .MBurst_Size(MBurst_Size_1)
 );
 
 // Channel 2 signals
@@ -137,6 +150,7 @@ logic [1:0]  MTrans_2;
 logic [31:0] MAddress_2;
 logic [31:0] MWData_2;
 logic [3:0] MWStrb_2;
+logic [1:0] MBurst_Size_2;
 
 Dmac_Channel channel_2 (
     .clk(clk),
@@ -147,7 +161,7 @@ Dmac_Channel channel_2 (
     .S_Address(SAddr_Reg),
     .D_Address(DAddr_Reg),
     .T_Size(Size_Reg),
-    .B_Size({{28{1'b0}}, {Ctrl_Reg[3:0]}}) ,
+    .B_Size({{27{1'b0}}, {decoded_BurstSize}}) ,
     .R_Data(MRData),
     .HSize(Ctrl_Reg[5:4]),
 
@@ -156,7 +170,8 @@ Dmac_Channel channel_2 (
     .HTrans(MTrans_2),
     .MAddress(MAddress_2),
     .MWData(MWData_2),
-    .MWStrb(MWStrb_2)
+    .MWStrb(MWStrb_2),
+    .MBurst_Size(MBurst_Size_2)
 );
 
 always_comb begin
@@ -164,21 +179,21 @@ always_comb begin
         MAddress = MAddress_1;
         MWData = MWData_1;
         MTrans = MTrans_1;
-        MBurst_Size = Ctrl_Reg[3:0];
+        MBurst_Size = {2'b00, MBurst_Size_1};
         MWrite = write_1;
         MWStrb = MWStrb_1;
     end else if (con_sel == 2'b01) begin
         MAddress = MAddress_2;
         MWData = MWData_2;
         MTrans = MTrans_2;
-        MBurst_Size = Ctrl_Reg[3:0];
+        MBurst_Size = {2'b00, MBurst_Size_2};
         MWrite = write_2;
         MWStrb = MWStrb_2;
     end else if (con_sel == 2'b10) begin
         MAddress = config_SAddr;
         MWData = 32'h0000_0000;
         MTrans = config_HTrans;
-        MBurst_Size = 2'b00;
+        MBurst_Size = 4'b0000;
         MWrite = config_write;
         MWStrb = 4'b1111;
     end
@@ -189,12 +204,10 @@ assign irq = irq_1 || irq_2;
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
         con_new_sel <= 0;
-        // irq <= 0;
     end
     else if (con_en) begin
         con_new_sel <= con_sel;
     end
-    // irq <= irq_1 || irq_2;
 
 end
 

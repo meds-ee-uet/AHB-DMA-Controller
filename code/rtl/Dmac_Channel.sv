@@ -25,7 +25,8 @@ module Dmac_Channel (
     output logic [1:0]  HTrans,
     output logic [31:0] MAddress,
     output logic [31:0] MWData,
-    output logic  [3:0] MWStrb
+    output logic  [3:0] MWStrb,
+    output logic  [1:0] MBurst_Size
 );
 
     // Internal wires
@@ -67,7 +68,8 @@ module Dmac_Channel (
         .fifo_empty  (fifo_empty),
         .MAddress    (MAddress),
         .MWData      (MWData),
-        .MWStrb      (MWStrb)
+        .MWStrb      (MWStrb),
+        .MBurst_Size (MBurst_Size)
     );
 
     // Instantiate the controller

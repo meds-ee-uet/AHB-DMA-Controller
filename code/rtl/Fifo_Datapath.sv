@@ -69,7 +69,7 @@ module Fifo_Datapath (
         end
     end
 
-    assign full       = (count == 15);
+    assign full       = (count == 16);
     assign fifo_empty = (count == 0);
 
 endmodule

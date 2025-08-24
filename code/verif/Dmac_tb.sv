@@ -14,7 +14,7 @@
 module Dmac_Top_tb;
 
     logic clk, rst;
-    logic [31:0] MRData;
+    logic [31:0] MRData, MRData_S, MRData_D;
     logic [1:0] HResp;
     logic [1:0] DmacReq;
     logic Bus_Grant;
@@ -55,14 +55,14 @@ module Dmac_Top_tb;
         .HSEL(selected_hsel[1]),
         .HADDR(MAddress),
         .HTRANS(MTrans),
-        .HWRITE(1'b0),
+        .HWRITE(MWrite),
         .HREADYIN(HReady),
-        .HWDATA(32'h0),
-        .HRDATA(MRData),  // Output to DMA
+        .HWDATA(MWData),
+        .HRDATA(MRData_S),  // Output to DMA
         .HREADYOUT(HReadyOut_S),
         .HRESP(HResp),
         .HSIZE(),
-        .WSTRB()
+        .WSTRB(MWStrb)
     );
 
     // Mock destination peripheral (write to memory)
@@ -75,7 +75,7 @@ module Dmac_Top_tb;
         .HWRITE(MWrite),
         .HREADYIN(HReady),
         .HWDATA(MWData),  // Input from DMA
-        .HRDATA(),        // Not used
+        .HRDATA(MRData_D),        // Not used
         .HREADYOUT(HReadyOut_D),
         .HRESP(),
         .HSIZE(),
@@ -83,11 +83,13 @@ module Dmac_Top_tb;
     );
 
     always_comb begin
-        if (latched_hsel == 2'b10)
+        if (latched_hsel == 2'b10) begin
             HReady = HReadyOut_S;
-        else if (latched_hsel == 2'b01)
+            MRData = MRData_S;
+        end else if (latched_hsel == 2'b01) begin
             HReady = HReadyOut_D;
-        else if (latched_hsel == 2'b00)
+            MRData = MRData_D;
+        end else if (latched_hsel == 2'b00)
             HReady = 1'b1;
     end
 
@@ -105,7 +107,7 @@ module Dmac_Top_tb;
         $display("Time = %0t ps, Interrupt changed to %b", $time, Interrupt);
     end
 
-    assign selected_hsel = (MAddress[12]) ? 2'b01: 2'b10;
+    assign selected_hsel = (MAddress[28]) ? 2'b01: 2'b10;
 
     always_comb begin
         if (dut.DmacReq_Reg[1]) begin
@@ -155,12 +157,12 @@ module Dmac_Top_tb;
         DmacReq = 0;
         Bus_Grant = 0;
 
-        for (int i = 0; i < 72; i++) begin
+        for (int i = 0; i < 100; i++) begin
             source.mem[i] = i+i;
         end
 
-        for (int i = 72; i < 144; i++) begin
-            dest.mem[i-72] = i+i;
+        for (int i = 100; i < 200; i++) begin
+            dest.mem[i-100] = i+i;
         end
 
 
@@ -169,26 +171,26 @@ module Dmac_Top_tb;
         source.mem[32'h0000_00A1] = 8'h00;
         source.mem[32'h0000_00A0] = 8'h00;
 
-        source.mem[32'h0000_00A7] = 8'h00;
+        source.mem[32'h0000_00A7] = 8'h10;
         source.mem[32'h0000_00A6] = 8'h00;
-        source.mem[32'h0000_00A5] = 8'h10;
+        source.mem[32'h0000_00A5] = 8'h00;
         source.mem[32'h0000_00A4] = 8'h00;
 
         source.mem[32'h0000_00AB] = 8'h00;
         source.mem[32'h0000_00AA] = 8'h00;
         source.mem[32'h0000_00A9] = 8'h00;
-        source.mem[32'h0000_00A8] = 8'd18;
+        source.mem[32'h0000_00A8] = 8'd22;
 
         source.mem[32'h0000_00AF] = 8'h00;
         source.mem[32'h0000_00AE] = 8'h01;
         source.mem[32'h0000_00AD] = 8'h00;
-        source.mem[32'h0000_00AC] = 8'h24;
+        source.mem[32'h0000_00AC] = 8'h22;
 
         // 2nd peripheral configuration
 
-        dest.mem[32'h0000_00A3] = 8'h00;
+        dest.mem[32'h0000_00A3] = 8'h10;
         dest.mem[32'h0000_00A2] = 8'h00;
-        dest.mem[32'h0000_00A1] = 8'h10;
+        dest.mem[32'h0000_00A1] = 8'h00;
         dest.mem[32'h0000_00A0] = 8'h00;
 
         dest.mem[32'h0000_00A7] = 8'h00;
@@ -199,12 +201,12 @@ module Dmac_Top_tb;
         dest.mem[32'h0000_00AB] = 8'h00;
         dest.mem[32'h0000_00AA] = 8'h00;
         dest.mem[32'h0000_00A9] = 8'h00;
-        dest.mem[32'h0000_00A8] = 8'd18;
+        dest.mem[32'h0000_00A8] = 8'd22;
 
         dest.mem[32'h0000_00AF] = 8'h00;
         dest.mem[32'h0000_00AE] = 8'h01;
         dest.mem[32'h0000_00AD] = 8'h00;
-        dest.mem[32'h0000_00AC] = 8'h24;
+        dest.mem[32'h0000_00AC] = 8'h21;
 
         // Wait a few cycles
         repeat (5) @(posedge clk);

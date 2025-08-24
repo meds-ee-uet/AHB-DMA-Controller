@@ -45,7 +45,8 @@ module Dmac_Channel_Datapath (
     output logic        fifo_empty,
     output logic [31:0] MAddress,
     output logic [31:0] MWData,
-    output logic [3:0]  MWStrb
+    output logic [3:0]  MWStrb,
+    output logic [1:0]  MBurst_Size
 );
 
     // Registers
@@ -55,6 +56,16 @@ module Dmac_Channel_Datapath (
     logic [31:0] Incr_Src_Addr;
     logic [31:0] Incr_Dst_Addr;
     logic [31:0] Dec_Transfer_Size;
+
+    always_comb begin
+        case (Burst_Size)
+            32'd1:  MBurst_Size = 2'b00; // 1-beat
+            32'd4:  MBurst_Size = 2'b01; // 4-beat
+            32'd8:  MBurst_Size = 2'b10; // 8-beat
+            32'd16:  MBurst_Size = 2'b11; // 16-beat
+            default: MBurst_Size = 2'b00; // 1-beat
+        endcase
+    end
 
     always_comb begin
         Incr_Src_Addr      = Src_Addr + 32'd4;
