@@ -8,7 +8,7 @@
 - [Muhammad Mouzzam](https://github.com/MuhammadMouzzam)
 - [Danish Hassan](https://github.com/Danish-Hassann)
 
-## File Structure
+## Repository Structure
 - [Code](code/)
   - [RTL](code/rtl/)
     - [Mock Peripheral/Buffer](code/rtl/Buffer.sv)
@@ -115,9 +115,9 @@ In single mode, one data item is moved at a time. It is used when a peripheral o
 | `ReqAck`  | Output | 2     | Request Acknowledgement Signals to each peripheral |
 
 ### ***Control and Interrupt Interface***
-| Signals     | Type   | Width | Purpose                                          |
-| ----------- | ------ | ----- | ------------------------------------------------ |
-| `Interrupt` | Output | 1     | Signals to CPU that transfer is complete         |
+| Signals     | Type   | Width | Purpose                                  |
+| ----------- | ------ | ----- | ---------------------------------------- |
+| `Interrupt` | Output | 1     | Signals to CPU that transfer is complete |
 
 ### ***Master Interface***
 | Signals     | Type   | Width | Purpose                                                                                   |
@@ -145,12 +145,14 @@ This DMAC has been designed as to follow a certain pipeline to complete the tran
 When a peripheral issues a transfer request to the DMAC, the DMAC automatically stores the peripheral’s base address into the Peripheral Address Register (`peri_addr_reg`). This allows the DMAC to configure itself for the transfer. In addition, the request bits are stored in a register (`DmacReq_Reg`) for later use in enabling the corresponding channels.
 
 1. **Channel Priority**
-   - `DmacReq[1]` has the highest priority and enables `Channel 1` to handle the transfer.
-   - If both request signals are asserted simultaneously, the DMAC ignores `DmacReq[0]` and does not assert its corresponding request acknowledge signal `ReqAck[1]`. The requesting slave(s) must hold its/their request(s) active until the acknowledgement signal is received.
-   - `Channel 2` is assigned to service `DmacReq[0]`.
+   - `DmacReq[1]` has highest priority and enables `Channel 1` for transfer.  
+   - If both requests assert simultaneously, DMAC ignores `DmacReq[0]` and does not assert `ReqAck[1]`; requesting slaves must keep requests active until acknowledged.  
+   - `Channel 2` services `DmacReq[0]`.  
+
 
 2. **Bus Request**
-Once a valid peripheral request is detected, the DMAC asserts the Bus Request (`Bus_Req`) signal to the AHB arbiter to request access to the bus. This signal remains asserted for the entire transfer to ensure bus ownership, even if a higher-priority master attempts to acquire the bus.
+Once a valid peripheral request is detected, the DMAC asserts `Bus_Req` to the AHB arbiter for bus access and keeps it asserted for the entire transfer to retain ownership, even against higher-priority masters.  
+
 
 1. **Bus Arbitration**
 After being triggered by the peripheral, control transitions to the Bus Request (`Bus Reqd.`) state. In this state, the DMAC waits until the arbiter asserts Bus Grant (`Bus_Grant`), granting bus access and allowing the transfer to proceed.
@@ -194,8 +196,8 @@ After being triggered by the peripheral, control transitions to the Bus Request 
 - DMAC then re-requests the bus and resumes transfer until completion.
 
 ### **Transfer Completion and Disabling DMAC**
-1. After the channel has been enabled, Now the DMAC waits for `irq` which signals transfer completion from the channel's side. During the transfer, it is important to decide which channel should output the data to the master interface. To do that, a mux is used with `con_sel` signal as selector. This `con_sel` is also given to a FlipFlop and the output of the FlipFlop, `new_con_sel` is the input to the controller of the DMAC, which informs which channel was enabled previously. `0` means `channel 1`, `1` means `channel 2`.
-2. Once `irq` is asserted, DMAC asserts the `Interrupt` flag to signal the CPU about the completion of transfer, that means the CPU can take the Bus access.
+1. After enabling a channel, the DMAC waits for `irq` to signal transfer completion. A mux with `con_sel` selects the channel output, and `con_sel` latched into `new_con_sel` tells the controller which channel was active (`0` = ch1, `1` = ch2).  
+2. On `irq`, the DMAC asserts `Interrupt` to inform the CPU that transfer is done and bus access is available.
 
 ---
 
@@ -210,7 +212,7 @@ After being triggered by the peripheral, control transitions to the Bus Request 
 | ----------------- | ------ | ----------------------------------------------------------------------- |
 | `irq`             | Input  | OR of `irq_1` and `irq_2` from both channels, indicates transfer done   |
 | `con_sel`         | Output | Selector of a mux to output the data from the enabled channel           |
-| `con_new_sel`     | Input  | Feedback from Flip-Flop storing previous value of `con_sel`              |
+| `con_new_sel`     | Input  | Feedback from Flip-Flop storing previous value of `con_sel`             |
 | `Bus_Req`         | Output | Signal to request access of the bus from the bus' Interconnect          |
 | `Bus_Grant`       | Input  | Signals that the bus Request was acknowledged and bus access granted    |
 | `Interrupt`       | Output | Signals the Completion of the current transfer                          |
@@ -237,17 +239,17 @@ After being triggered by the peripheral, control transitions to the Bus Request 
 </div>
 
 ### **States:**
-| State     | Purpose                                                                          |
-| --------- | -------------------------------------------------------------------------------- |
-| `Idle`    | The which indicates the DMAC is not handling any Requests                        |
-| `BUS_REQD`          | DMAC has latched the request and asserts `Bus_Req`, waits for `Bus_Grant` and sends read request to peripheral for reading the Source Address.   |
-| `WAIT_FOR_SRC`      | Fetches and writes the **Source Address Register** once the bus is granted.   |
-| `WAIT_FOR_DST`      | Fetches and writes the **Destination Address Register**.                                |
-| `WAIT_FOR_TRANS_SIZE` | Configures the **Transfer Size Register** for the data transfer.                           |
-| `WAIT_FOR_CTRL`     | Configures the **Control Register** of DMAC, decides whether MSB or LSB request to serve.   |
-| `MSB Req` | State indicating that the peripheral with a higher priority has made the request |
-| `LSB`     | State indicating that the peripheral with a lower priority has made the request  |
-| `Wait`    | A wait state until the transfer is complete                                      |
+| State                 | Purpose                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Idle`                | The which indicates the DMAC is not handling any Requests                                                                                      |
+| `BUS_REQD`            | DMAC has latched the request and asserts `Bus_Req`, waits for `Bus_Grant` and sends read request to peripheral for reading the Source Address. |
+| `WAIT_FOR_SRC`        | Fetches and writes the **Source Address Register** once the bus is granted.                                                                    |
+| `WAIT_FOR_DST`        | Fetches and writes the **Destination Address Register**.                                                                                       |
+| `WAIT_FOR_TRANS_SIZE` | Configures the **Transfer Size Register** for the data transfer.                                                                               |
+| `WAIT_FOR_CTRL`       | Configures the **Control Register** of DMAC, decides whether MSB or LSB request to serve.                                                      |
+| `MSB Req`             | State indicating that the peripheral with a higher priority has made the request                                                               |
+| `LSB`                 | State indicating that the peripheral with a lower priority has made the request                                                                |
+| `Wait`                | A wait state until the transfer is complete                                                                                                    |
 
 ## **DMAC Channel**
 ## **Pinout:**
@@ -412,7 +414,7 @@ The DMA channel operates through a **finite state machine (FSM)** that governs t
 | `Hold Write` | "State indicating that the bus grant was given to the processor during a write operation, and the state remains active until the DMA channel is re-enabled. |
 
 ## ***Verification and Testing***
-To thoroughly verify the DMAC's functionality, a Mock AHB Peripheral was designed which works just like a normal AHB peripheral and has a 1024 `byte` long register file (`8x1024`) inside it which contains the data to be transferred. Two mock peripherals were instantiated, named source and dest, which behave as the source and destination of the data to be transferred. `transfer_size` was kept at 18 and was initialized with random data in source peripheral and `burst_size` was kept at 4. The first 16 `words` were transferred in 4 bursts of 4 while the remaining 2 `words` were transferred in single mode. All three possible peripheral Requests were passed and in those requests in which `DmacReq[1]` was asserted, it was given priority. All edge cases were tested and passed successfully.
+To verify the DMAC, a Mock AHB Peripheral with a 1024-byte register file (`8x1024`) was designed. Two instances, source and dest, acted as data source and destination. `transfer_size` was 18 with random data in source, and `burst_size` was 4. The first 16 words transferred in 4 bursts of 4, the remaining 2 in single mode. All three request types were tested, with `DmacReq[1]` given priority when asserted. All edge cases passed successfully.  
 
 ## **Waveforms**
 
