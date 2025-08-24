@@ -157,15 +157,18 @@ module Dmac_Top_tb;
         DmacReq = 0;
         Bus_Grant = 0;
 
+        // Initializing Source
         for (int i = 0; i < 100; i++) begin
             source.mem[i] = i+i;
         end
 
+        // Initializing Destination
         for (int i = 100; i < 200; i++) begin
             dest.mem[i-100] = i+i;
         end
 
-
+        // 1st peripheral configuration
+        
         source.mem[32'h0000_00A3] = 8'h00;
         source.mem[32'h0000_00A2] = 8'h00;
         source.mem[32'h0000_00A1] = 8'h00;
@@ -212,34 +215,9 @@ module Dmac_Top_tb;
         repeat (5) @(posedge clk);
         rst = 0;
 
-
-
-
         // Request from Peripheral 
         @(posedge clk);
         DmacReq = 2'b11;
-        // Program DMA channel via CPU-like interface
-
-        // case (temp_hsize)
-        //     2'b00: begin  // Byte
-        //         case (temp_src_addr[1:0])
-        //             2'b00: temp_Strb = 4'b0001;
-        //             2'b01: temp_Strb = 4'b0010;
-        //             2'b10: temp_Strb = 4'b0100;
-        //             2'b11: temp_Strb = 4'b1000;
-        //             default: temp_Strb = 4'b0000;
-        //         endcase
-        //     end
-        //     2'b01: begin  // Halfword
-        //         case (temp_src_addr[1:0])
-        //             2'b00: temp_Strb = 4'b0011;  
-        //             2'b10: temp_Strb = 4'b1100;
-        //             default: temp_Strb = 4'b0000; 
-        //         endcase
-        //     end
-        //     2'b10: temp_Strb = 4'b1111;  // Word — all bytes active
-        //     default: temp_Strb = 4'b0000;
-        // endcase
 
         // Grant bus to DMA
         @(posedge clk);
@@ -281,7 +259,7 @@ task monitor(input logic [31:0] transfer_size, input logic [9:0] src_addr, dst_a
                 $display("\033[1;35mInvalid Byte\033[0m");
         end
     end
-    $display("\033[1;35mTest Cases:\033[0m\n    \033[1;32mPassed = %d\033[0m, \033[1;31mFailed = %d\033[0m", passed, failed);
+    $display("\033[1;35mValid Bytes Transferred:\033[0m\n    \033[1;32mSuccessfull = %d\033[0m, \033[1;31mUnsuccessfull = %d\033[0m", passed, failed);
 endtask
 
 task check_byte(input int saddr, daddr, input bit dir);

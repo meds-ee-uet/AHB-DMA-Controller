@@ -4,7 +4,7 @@
 
 # ***AHB Direct Access Memory Controller (DMAC)***
 
-## Designed By:
+## Designed and Verified By:
 - [Muhammad Mouzzam](https://github.com/MuhammadMouzzam)
 - [Danish Hassan](https://github.com/Danish-Hassann)
 
@@ -32,7 +32,6 @@
 - [DMAC](#dmac)
   - [Block Diagram/Pinout](#block-diagrampinout)
   - [Signals](#signals)
-
     - [Request and Response Interface](#request-and-response-interface)
     - [Control and Interrupt Interface](#control-and-interrupt-interface)
     - [Master Interface](#master-interface)
@@ -60,6 +59,7 @@
     - [Internal Signals](#internal-signals-1)
     - [State Transition Graph](#state-transition-graph-1)
     - [States](#states-1)
+  - [Resources](#resources)
 
 ## **Introduction**
 A Direct Memory Access Controller (DMAC) is a hardware module designed to facilitate efficient data transfers between memory and peripherals, or between two peripheral devices, without heavily involving the processor (CPU). This mechanism allows data movement to occur in the background, freeing the CPU to execute other instructions or handle high-priority tasks.
@@ -414,7 +414,9 @@ The DMA channel operates through a **finite state machine (FSM)** that governs t
 | `Hold Write` | "State indicating that the bus grant was given to the processor during a write operation, and the state remains active until the DMA channel is re-enabled. |
 
 ## ***Verification and Testing***
-To verify the DMAC, a Mock AHB Peripheral with a 1024-byte register file (`8x1024`) was designed. Two instances, source and dest, acted as data source and destination. `transfer_size` was 18 with random data in source, and `burst_size` was 4. The first 16 words transferred in 4 bursts of 4, the remaining 2 in single mode. All three request types were tested, with `DmacReq[1]` given priority when asserted. All edge cases passed successfully.  
+To verify the DMAC, a Mock AHB Peripheral with a 1024-byte register file (`8x1024`) was designed. Two instances, source and dest, acted as data source and destination. `transfer_size` was 22 with random data in source, and `burst_size` was 4. All the tests were performed on an AHB Bus. The first 16 words transferred in 5 bursts of 4, the remaining 2 in single mode. All three request types were tested, with `DmacReq[1]` given priority when asserted. All edge cases passed successfully.
+
+- You can access the RTL for AHB Bus through this [link](https://github.com/meds-uet/AHB-Bus) or from the [Resources](#resources) Tab.
 
 ## **Waveforms**
 
@@ -443,11 +445,7 @@ In this image, the `DmacReq` signal was `01`, so `Channel 2` was enabled and Int
 <div align='center'>
 <img src='docs/tb_01req.png'>
 </div>
-
-All test cases were passed as only those bytes were tested which were valid depending upon the `MWSTRB` signal. If a byte was Invalid, **Invalid Byte** was displayed.
-<div align='center'>
-<img width=300px height=334px src='docs/tc_01req.png'>
-</div>
+We can see for reading, address of 1st peripheral (i.e. `0x0000xxxx`) is sent on the bus while for writing, address of 2nd peripheral is sent.
 
 ---
 
@@ -456,10 +454,7 @@ Here, `HSize` was kept as `halfword` and the address offset was kept at `2`.
 <div align='center'>
 <img src='docs/tb_10req.png'>
 </div>
-All test cases were passed depending upon the `MWSTRB` signal.
-<div align='center'>
-<img width=300px height=334px src='docs/tc_10req.png'>
-</div>
+We can see for reading, address of 2nd peripheral (i.e. `0x1000xxxx`) is sent on the bus while for writing, address of 1st peripheral is sent.
 
 ---
 
@@ -468,15 +463,30 @@ In this case, `HSize` was kept as `word` and the address offset was kept at `0`.
 <div align='center'>
 <img src='docs/tb_11req.png'>
 </div>
-All test cases were passed while expected valid of `MWSTRB` was `1111`.
-<div align='center'>
-<img width=300px height=334px src='docs/tc_11req.png'>
+We can see for reading, address of 2nd peripheral (i.e. `0x1000xxxx`) is sent on the bus while for writing, address of 1st peripheral is sent.
+
+### Summary of all 3 cases
+All bytes were successfully transferred as only those bytes were tested which were valid depending upon the `MWSTRB` signal. If a byte was Invalid, **Invalid Byte** was displayed.
+<div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+  <figure style="text-align: center;">
+    <img width="225px" height="250px" src="docs/tc_01req.png" alt="DmacReq = 01">
+    <figcaption><b>Figure 1:</b> DmacReq = 01</figcaption>
+  </figure>
+  <figure style="text-align: center;">
+    <img width="225px" height="250px" src="docs/tc_10req.png" alt="DmacReq = 10">
+    <figcaption><b>Figure 2:</b> DmacReq = 10</figcaption>
+  </figure>
+  <figure style="text-align: center;">
+    <img width="225px" height="250px" src="docs/tc_11req.png" alt="DmacReq = 11">
+    <figcaption><b>Figure 3:</b> DmacReq = 11</figcaption>
+  </figure>
 </div>
 
 ---
 
 ### Bus Grant Deasserted mid transfer
 In this case, `HSize` is still `word` encoded and offset is `0` but bus grant was deasserted mid transfer for 2 clock edges.
+Note: This test was not performed on AHB bus, in order for us to easily manipulate bus grant.
 <div align='center'>
 <img src='docs/bg_da.png'>
 </div>
@@ -487,6 +497,7 @@ Even though DMAC was removed as bus master, Transfer resumed after DMAC was agai
 
 ---
 
-# ***References***
+# ***Resources***
 - [AHB Bus - Documentation](https://developer.arm.com/documentation/ihi0033/latest/)
+- [RTL - AHB Bus](https://github.com/meds-uet/AHB-Bus)
 - [ARM PL081 Single Master DMAC - Documentation](https://developer.arm.com/documentation/ddi0218/e)
