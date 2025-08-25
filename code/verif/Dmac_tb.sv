@@ -75,7 +75,7 @@ module Dmac_Top_tb;
         .HWRITE(MWrite),
         .HREADYIN(HReady),
         .HWDATA(MWData),  // Input from DMA
-        .HRDATA(MRData_D),        // Not used
+        .HRDATA(MRData_D),        
         .HREADYOUT(HReadyOut_D),
         .HRESP(),
         .HSIZE(),
@@ -194,12 +194,12 @@ module Dmac_Top_tb;
         dest.mem[32'h0000_00A3] = 8'h10;
         dest.mem[32'h0000_00A2] = 8'h00;
         dest.mem[32'h0000_00A1] = 8'h00;
-        dest.mem[32'h0000_00A0] = 8'h04;
+        dest.mem[32'h0000_00A0] = 8'h03;
 
         dest.mem[32'h0000_00A7] = 8'h00;
         dest.mem[32'h0000_00A6] = 8'h00;
         dest.mem[32'h0000_00A5] = 8'h00;
-        dest.mem[32'h0000_00A4] = 8'h00;
+        dest.mem[32'h0000_00A4] = 8'h08;
 
         dest.mem[32'h0000_00AB] = 8'h00;
         dest.mem[32'h0000_00AA] = 8'h00;
@@ -275,8 +275,8 @@ task check_byte(input int saddr, daddr, input bit dir);
     end
     if (sdata == ddata) begin
         $display("\033[1;32mPASS: {[%0s][%-2d] = %x} == {[%0s][%-2d] = %x}\033[0m",
-                 (dir==1)?"Source":"Dest", (dir==1)?saddr:daddr, ddata,
-                 (dir==1)?"Dest":"Source", (dir==1)?daddr:saddr, sdata);
+                 (dir==1)?"Dest":"Source", (dir==1)?saddr:daddr, ddata,
+                 (dir==1)?"Source":"Dest", (dir==1)?daddr:saddr, sdata);
         passed += 1;
     end else begin
         $display("\033[1;31mFAIL: {[%0s][%-2d] = %x} != {[%0s][%-2d] = %x}\033[0m",

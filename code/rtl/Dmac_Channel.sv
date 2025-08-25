@@ -26,7 +26,7 @@ module Dmac_Channel (
     output logic [31:0] MAddress,
     output logic [31:0] MWData,
     output logic  [3:0] MWStrb,
-    output logic  [1:0] MBurst_Size
+    output logic  [2:0] MBurst_Size
 );
 
     // Internal wires

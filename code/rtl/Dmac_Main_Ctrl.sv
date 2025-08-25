@@ -183,7 +183,7 @@ module Dmac_Main_Ctrl(
                     next_state   = WAIT;
                 end else if (irq && ({C_config, Bus_Grant} == 2'b11)) begin
                     Interrupt  = 1;
-                    con_sel = 2'b01;
+                    con_sel = 2'b00;
                     Channel_en_1 = 1;
                     next_state = IDLE;
                 end else
