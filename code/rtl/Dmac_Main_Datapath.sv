@@ -115,7 +115,7 @@ Dmac_Channel channel_1 (
     .S_Address(SAddr_Reg),
     .D_Address(DAddr_Reg),
     .T_Size(Size_Reg),
-    .B_Size({{28{1'b0}}, {Ctrl_Reg[3:0]}}),
+    .B_Size({{29{1'b0}}, {Ctrl_Reg[2:0]}}),
     .R_Data(MRData),
     .HSize(Ctrl_Reg[5:4]),
 
@@ -147,7 +147,7 @@ Dmac_Channel channel_2 (
     .S_Address(SAddr_Reg),
     .D_Address(DAddr_Reg),
     .T_Size(Size_Reg),
-    .B_Size({{27{1'b0}}, {decoded_BurstSize}}) ,
+    .B_Size({{29{1'b0}}, {Ctrl_Reg[2:0]}}) ,
     .R_Data(MRData),
     .HSize(Ctrl_Reg[5:4]),
 
@@ -165,21 +165,21 @@ always_comb begin
         MAddress = MAddress_1;
         MWData = MWData_1;
         MTrans = MTrans_1;
-        MBurst_Size = {2'b00, MBurst_Size_1};
+        MBurst_Size = MBurst_Size_1;
         MWrite = write_1;
         MWStrb = MWStrb_1;
     end else if (con_sel == 2'b01) begin
         MAddress = MAddress_2;
         MWData = MWData_2;
         MTrans = MTrans_2;
-        MBurst_Size = {2'b00, MBurst_Size_2};
+        MBurst_Size = MBurst_Size_2;
         MWrite = write_2;
         MWStrb = MWStrb_2;
     end else if (con_sel == 2'b10) begin
         MAddress = config_SAddr;
         MWData = 32'h0000_0000;
         MTrans = config_HTrans;
-        MBurst_Size = 4'b0000;
+        MBurst_Size = 3'b000;
         MWrite = config_write;
         MWStrb = 4'b1111;
     end
