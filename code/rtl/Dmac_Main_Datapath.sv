@@ -41,7 +41,6 @@ logic [31:0] Size_Reg, SAddr_Reg, DAddr_Reg, Ctrl_Reg, PeriAddr_Reg;
 logic [31:0] decoded_Peri_addr, config_SAddr;
 logic [3:0] config_strbs;
 logic [1:0] config_HSize, config_BurstSize;
-logic [4:0] decoded_BurstSize;
 
 assign config_HSize = 2'b10;
 assign config_BurstSize = 2'b01;
@@ -58,26 +57,13 @@ always_comb begin
     endcase
 end
 
-always_comb begin
-    case(Ctrl_Reg[3:0])
-        4'b0000: decoded_BurstSize = 5'b00001; // INCR
-        4'b0001: decoded_BurstSize = 5'b00100; // INCR4
-        4'b0010: decoded_BurstSize = 5'b01000; // INCR8
-        4'b0011: decoded_BurstSize = 5'b10000; // INCR16
-        default: decoded_BurstSize = 5'b00001; // INCR
-    endcase
-end
-
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
         Size_Reg <= 32'b0;
         SAddr_Reg <= 32'b0;
         DAddr_Reg <= 32'b0;
         Ctrl_Reg <= 32'b0;
-    end
-    else if (irq)
-        Ctrl_Reg <= 32'b0;
-    else if (SAddr_Reg_en)
+    end else if (SAddr_Reg_en)
         SAddr_Reg <= MRData;
     else if (DAddr_Reg_en)
         DAddr_Reg <= MRData;
@@ -129,7 +115,7 @@ Dmac_Channel channel_1 (
     .S_Address(SAddr_Reg),
     .D_Address(DAddr_Reg),
     .T_Size(Size_Reg),
-    .B_Size({{27{1'b0}}, {decoded_BurstSize}}),
+    .B_Size({{28{1'b0}}, {Ctrl_Reg[3:0]}}),
     .R_Data(MRData),
     .HSize(Ctrl_Reg[5:4]),
 

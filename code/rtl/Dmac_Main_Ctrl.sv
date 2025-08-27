@@ -176,12 +176,12 @@ module Dmac_Main_Ctrl(
             end
 
             MSB_REQ: begin
-                if (!irq && ({C_config, Bus_Grant} == 2'b11)) begin
+                if (!irq && Bus_Grant) begin
                     Channel_en_1 = 1;
                     con_en       = 0;
                     con_sel      = 2'b00;
                     next_state   = WAIT;
-                end else if (irq && ({C_config, Bus_Grant} == 2'b11)) begin
+                end else if (irq && Bus_Grant) begin
                     Interrupt  = 1;
                     con_sel = 2'b01;
                     Channel_en_1 = 1;
@@ -191,12 +191,12 @@ module Dmac_Main_Ctrl(
             end
 
             LSB_REQ: begin
-                if (!irq && ({C_config, Bus_Grant} == 2'b11)) begin
+                if (!irq && Bus_Grant) begin
                     Channel_en_2 = 1;
                     con_en       = 1;
                     con_sel      = 2'b01;
                     next_state   = WAIT;
-                end else if (irq && ({C_config, Bus_Grant} == 2'b11)) begin
+                end else if (irq && Bus_Grant) begin
                     Interrupt  = 1;
                     con_sel = 1;
                     Channel_en_2 = 1;
