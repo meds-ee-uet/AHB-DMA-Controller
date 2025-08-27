@@ -23,7 +23,7 @@ module Dmac_Top (
     // Outputs to Bus
     output logic [31:0] MAddress,
     output logic [31:0] MWData,
-    output logic [3:0]  MBurst_Size,
+    output logic [2:0]  MBurst_Size,
     output logic        MWrite,
     output logic [1:0]  MTrans,
     output logic [3:0]  MWStrb,

@@ -30,7 +30,7 @@ module Dmac_Main_Datapath(
     output logic [1:0] con_new_sel,
     output logic [31:0] MAddress,
     output logic [31:0] MWData,
-    output logic [3:0] MBurst_Size,
+    output logic [2:0] MBurst_Size,
     output logic MWrite,
     output logic [3:0] MWStrb,
     output logic [1:0] MTrans,
@@ -104,7 +104,7 @@ logic [1:0]  MTrans_1;
 logic [31:0] MAddress_1;
 logic [31:0] MWData_1;
 logic [3:0] MWStrb_1;
-logic [1:0] MBurst_Size_1;
+logic [2:0] MBurst_Size_1;
 
 Dmac_Channel channel_1 (
     .clk(clk),
@@ -136,7 +136,7 @@ logic [1:0]  MTrans_2;
 logic [31:0] MAddress_2;
 logic [31:0] MWData_2;
 logic [3:0] MWStrb_2;
-logic [1:0] MBurst_Size_2;
+logic [2:0] MBurst_Size_2;
 
 Dmac_Channel channel_2 (
     .clk(clk),
