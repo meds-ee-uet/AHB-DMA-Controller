@@ -35,7 +35,7 @@ module Dmac_Top (
 );
 
     // Internal control signals
-    logic con_en, irq, C_config;
+    logic con_en, irq;
     logic DmacReq_Reg_en, SAddr_Reg_en, DAddr_Reg_en, Trans_sz_Reg_en, Ctrl_Reg_en;
     logic config_write, PeriAddr_reg_en;
     logic channel_en_1, channel_en_2;
@@ -63,7 +63,6 @@ module Dmac_Top (
         .config_HTrans  (config_HTrans),
         .config_write   (config_write),
 
-        .C_config       (C_config),
         .irq            (irq),
         .con_new_sel    (con_new_sel),
         .MAddress       (MAddress),
@@ -83,7 +82,6 @@ module Dmac_Top (
         .con_new_sel    (con_new_sel),
         .irq            (irq),
         .Bus_Grant      (Bus_Grant),
-        .C_config       (C_config),
         .DmacReq_Reg    (DmacReq_Reg),
         .HReady         (HReady),
 

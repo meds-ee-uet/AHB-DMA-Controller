@@ -37,7 +37,7 @@ module Dmac_Main_Ctrl(
     input  logic [1:0] con_new_sel,
     input  logic irq,
     input  logic Bus_Grant,
-    input  logic C_config, HReady,
+    input  logic HReady,
 
     output logic [1:0] con_sel,
     output logic Bus_Req,

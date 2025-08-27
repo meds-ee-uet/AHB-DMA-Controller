@@ -25,7 +25,6 @@ module Dmac_Main_Datapath(
     input logic DmacReq_Reg_en, SAddr_Reg_en, DAddr_Reg_en, Trans_sz_Reg_en, Ctrl_Reg_en,
     input logic PeriAddr_reg_en,
 
-    output logic C_config,
     output logic irq,
     output logic [1:0] con_new_sel,
     output logic [31:0] MAddress,
@@ -41,11 +40,21 @@ logic [31:0] Size_Reg, SAddr_Reg, DAddr_Reg, Ctrl_Reg, PeriAddr_Reg;
 logic [31:0] decoded_Peri_addr, config_SAddr;
 logic [3:0] config_strbs;
 logic [1:0] config_HSize, config_BurstSize;
+logic [4:0] decoded_BurstSize;
 
 assign config_HSize = 2'b10;
 assign config_BurstSize = 2'b01;
 assign config_strbs = 4'b1111;
-assign C_config = Ctrl_Reg[16];
+
+always_comb begin
+        case (Ctrl_Reg[3:0])
+            4'b0:  decoded_BurstSize = 5'd1; // 1-beat
+            4'd1:  decoded_BurstSize = 5'd4; // 4-beat
+            4'd2:  decoded_BurstSize = 5'd8; // 8-beat
+            4'd3:  decoded_BurstSize = 5'd16; // 16-beat
+            default: decoded_BurstSize = 5'd1; // 1-beat
+        endcase
+    end
 
 always_comb begin
     case(DmacReq)
@@ -115,7 +124,7 @@ Dmac_Channel channel_1 (
     .S_Address(SAddr_Reg),
     .D_Address(DAddr_Reg),
     .T_Size(Size_Reg),
-    .B_Size({{29{1'b0}}, {Ctrl_Reg[2:0]}}),
+    .B_Size({{27{1'b0}}, {decoded_BurstSize}}),
     .R_Data(MRData),
     .HSize(Ctrl_Reg[5:4]),
 
@@ -147,7 +156,7 @@ Dmac_Channel channel_2 (
     .S_Address(SAddr_Reg),
     .D_Address(DAddr_Reg),
     .T_Size(Size_Reg),
-    .B_Size({{29{1'b0}}, {Ctrl_Reg[2:0]}}) ,
+    .B_Size({{27{1'b0}}, {decoded_BurstSize}}) ,
     .R_Data(MRData),
     .HSize(Ctrl_Reg[5:4]),
 

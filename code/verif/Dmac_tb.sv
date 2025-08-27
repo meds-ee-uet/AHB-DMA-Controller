@@ -21,7 +21,7 @@ module Dmac_Top_tb;
 
     logic HReady, HReadyOut_D, HReadyOut_S;
     logic [31:0] MAddress, MWData;
-    logic [3:0]  MBurst_Size;
+    logic [2:0]  MBurst_Size;
     logic MWrite;
     logic [1:0] MTrans;
     logic [3:0] MWStrb;
@@ -209,7 +209,7 @@ module Dmac_Top_tb;
         dest.mem[32'h0000_00AF] = 8'h00;
         dest.mem[32'h0000_00AE] = 8'h01;
         dest.mem[32'h0000_00AD] = 8'h00;
-        dest.mem[32'h0000_00AC] = 8'h21;
+        dest.mem[32'h0000_00AC] = 8'h22;
 
         // Wait a few cycles
         repeat (5) @(posedge clk);

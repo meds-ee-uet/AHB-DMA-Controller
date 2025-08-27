@@ -57,14 +57,13 @@ module Dmac_Channel_Datapath (
     logic [31:0] Incr_Dst_Addr;
     logic [31:0] Dec_Transfer_Size;
 
-    assign MBurst_Size = Burst_Size[2:0];
     always_comb begin
         case (Burst_Size)
-            32'b0:  decoded_BurstSize = 32'd1; // 1-beat
-            32'd1:  decoded_BurstSize = 32'd4; // 4-beat
-            32'd2:  decoded_BurstSize = 32'd8; // 8-beat
-            32'd3:  decoded_BurstSize = 32'd16; // 16-beat
-            default: decoded_BurstSize = 32'b00; // 1-beat
+            32'd1:  MBurst_Size = 3'b000; // 1-beat
+            32'd4:  MBurst_Size = 3'b001; // 4-beat
+            32'd8:  MBurst_Size = 3'b010;// 8-beat
+            32'd16:  MBurst_Size =  3'b011; // 16-beat
+            default: MBurst_Size = 3'b000; // 1-beat
         endcase
     end
 
@@ -128,7 +127,7 @@ module Dmac_Channel_Datapath (
         if (rst)
             Decrement_Counter <= 32'b0;
         else if (count_en)
-            Decrement_Counter <= (Decrement_Counter == 0) ? ((tslb) ? 0: decoded_BurstSize-1)  : Decremented_Value;
+            Decrement_Counter <= (Decrement_Counter == 0) ? ((tslb) ? 0: Burst_Size-1)  : Decremented_Value;
     end
 
 
