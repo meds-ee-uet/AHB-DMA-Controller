@@ -59,7 +59,10 @@
     - [Internal Signals](#internal-signals-1)
     - [State Transition Graph](#state-transition-graph-1)
     - [States](#states-1)
-  - [Resources](#resources)
+- [Verification And Testing](#verification-and-testing)
+    - [Waveforms](#waveforms)
+- [Resources](#resources)
+  
 
 ## **Introduction**
 A Direct Memory Access Controller (DMAC) is a hardware module designed to facilitate efficient data transfers between memory and peripherals, or between two peripheral devices, without heavily involving the processor (CPU). This mechanism allows data movement to occur in the background, freeing the CPU to execute other instructions or handle high-priority tasks.
