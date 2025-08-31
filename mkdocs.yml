@@ -1,0 +1,3 @@
+site_name: AHB Direct Memory Access (DMA) Controller Documentation
+nav:
+  - Home: index.md
