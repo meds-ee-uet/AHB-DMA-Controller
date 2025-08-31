@@ -34,4 +34,4 @@ Licensed under the Apache 2.0 License.
 
 ---
 
-📖 [Documentation](https://systolic-mac.readthedocs.io/en/latest/)
+📖 [Documentation](https://ahb-dma-controller.readthedocs.io/en/latest/)
