@@ -1,0 +1,329 @@
+# Theory Of Operation 
+## **Introduction**
+A Direct Memory Access Controller (DMAC) is a hardware module designed to facilitate efficient data transfers between memory and peripherals, or between two peripheral devices, without heavily involving the processor (CPU). This mechanism allows data movement to occur in the background, freeing the CPU to execute other instructions or handle high-priority tasks.
+
+When the CPU is tasked with handling data transfers directly, it typically becomes blocked — it must wait and perform each individual read and write operation. This process consumes valuable processor cycles and significantly hampers overall system performance, especially when dealing with large volumes of data. To alleviate this bottleneck, the DMAC takes over the responsibility of managing the transfer and temporarily gains control of the system bus.
+
+Once granted control, the DMAC autonomously carries out the data transfer between source and destination addresses using its own internal logic. After completing the transfer, it relinquishes the bus back to the CPU, generating an interrupt to signal completion.
+
+***Transfer Types:*** DMAC supports two fundamental types of data transfers:
+
+- **Burst Transfer**
+In burst mode, the DMAC collects data into a FIFO buffer. Once the buffer reaches the defined burst size, transfer starts. Data is sent in a continuous sequence without interruption. This reduces bus arbitration and improves throughput. Best suited for large data blocks or high-speed devices. However, it can monopolize the bus during the burst. Careful arbitration is needed in multi-master systems.
+
+- **Single Transfer**
+In single mode, one data item is moved at a time. It is used when a peripheral only has 1 word to transfer. Ideal for low-latency or real-time applications. Overhead is higher due to repeated bus arbitration. More predictable and fair in shared-bus environments. Recommended for small or sporadic data transfers.
+
+---
+
+## **Specifications**
+- Number of Channels: 2
+- Fixed Priority Channels
+  - Highest priority: `Channel 1`
+  - Lowest priortity: `Channel 2`
+- Maximum Burst Transfer Capability: `16 beats`
+- Endianness: `Little-Endian`
+- Invariance: `byte invariant`
+- Highest priority to `DmacReq[1]` Request - Assigned `Channel 1`
+- FIFO depth in Each Channel: 16 words
+- Supported Peripherals/Slaves: 2
+- Capable of Burst and Single transfer
+  - 4 32-bit Registers:
+    - Control Register - `Ctrl_Reg `
+    - Size Register - `Size_Reg`
+    - Source Address Register -  `SAddr_Reg`
+    - Destination Address Register - `DAddr_Reg`
+- Request and Response Interface: For peripherals
+- If CPU asks for bus access, burst transfer is halted until bus access is granted again.
+
+---
+
+## **DMAC**
+
+## **Block Diagram/Pinout**
+<div align='center'>
+<img width=700px height=405px src='../DMAC/DMAC_pinout.png'>
+</div>
+
+---
+
+## **Signals:**
+
+### **Request and Response Interface**
+| `Signals` | Type   | Width | Purpose                                            |
+| --------- | ------ | ----- | -------------------------------------------------- |
+| `DmacReq` | Input  | 2     | Each bit indicates a request from each peripheral  |
+| `ReqAck`  | Output | 2     | Request Acknowledgement Signals to each peripheral |
+
+---
+
+### **Control and Interrupt Interface**
+| Signals     | Type   | Width | Purpose                                  |
+| ----------- | ------ | ----- | ---------------------------------------- |
+| `Interrupt` | Output | 1     | Signals to CPU that transfer is complete |
+
+---
+
+### **Master Interface**
+| Signals     | Type   | Width | Purpose                                                                                   |
+| ----------- | ------ | ----- | ----------------------------------------------------------------------------------------- |
+| `Bus_Req`   | Output | 1     | Requests Bus' Arbiter to become Bus Master (Remains asserted until Bus_Grant is asserted) |
+| `Bus_Grant` | Input  | 1     | Signals DMAC that bus access is granted to it                                             |
+| `MWData`    | Output | 32    | Data to write to Slave as a master                                                        |
+| `MAddress`  | Output | 32    | Address to Slave as a master                                                              |
+| `MTrans`    | Output | 2     | Tells the state of the current transfer Request on bus as a master                        |
+| `MWrite`    | Output | 1     | As a master, tells the slave the nature of the transfer Request                           |
+| `MRData`    | Input  | 32    | Data Read from the Slave                                                                  |
+| `HReady`    | Input  | 1     | Signals DMAC that the transfer request is complete                                        |
+| `M_HResp`   | Input  | 2     | From slave to master, tells if the transfer was successful or not                         |
+| `MHSize`    | Output | 2     | Tells the size of the single transfer i.e. `byte`, `halfword` or `word`                   |
+| `MWSTRB`    | Output | 4     | `4` bit signal, each bit represents a valid `byte` in a `word`                            |
+
+---
+
+## **Working Pipeline:**
+This DMAC has been designed as to follow a certain pipeline to complete the transfer. The pipeline is as follows:
+<div align='center'>
+    <img src='../DMAC/DMAC_Pipeline.png'>
+</div>
+
+---
+
+### **Request from Peripheral**
+
+When a peripheral issues a transfer request to the DMAC, the DMAC automatically stores the peripheral’s base address into the Peripheral Address Register (`peri_addr_reg`). This allows the DMAC to configure itself for the transfer. In addition, the request bits are stored in a register (`DmacReq_Reg`) for later use in enabling the corresponding channels.
+
+1. **Channel Priority**
+    - `DmacReq[1]` has highest priority and enables `Channel 1` for transfer.  
+    - If both requests assert simultaneously, DMAC ignores `DmacReq[0]` and does not assert `ReqAck[1]`; requesting slaves must keep requests active until acknowledged.  
+    - `Channel 2` services `DmacReq[0]`.  
+
+
+2. **Bus Request**
+    - Once a valid peripheral request is detected, the DMAC asserts `Bus_Req` to the AHB arbiter for bus access and keeps it asserted for the entire transfer to retain ownership, even against higher-priority masters.  
+
+
+3. **Bus Arbitration**
+    - After being triggered by the peripheral, control transitions to the Bus Request (`Bus Reqd.`) state. In this state, the DMAC waits until the arbiter asserts Bus Grant (`Bus_Grant`), granting bus access and allowing the transfer to proceed.
+
+---
+
+
+## **DMAC DataPath**
+<div align='center'>
+  <img src='../DMAC/DMAC_datapath.png'>
+</div>
+
+---
+
+## **DMAC Controller**
+### **Internal Signals**
+| Signal            | Type   | Purpose                                                                 |
+| ----------------- | ------ | ----------------------------------------------------------------------- |
+| `irq`             | Input  | OR of `irq_1` and `irq_2` from both channels, indicates transfer done   |
+| `con_sel`         | Output | Selector of a mux to output the data from the enabled channel           |
+| `con_new_sel`     | Input  | Feedback from Flip-Flop storing previous value of `con_sel`             |
+| `Bus_Req`         | Output | Signal to request access of the bus from the bus' Interconnect          |
+| `Bus_Grant`       | Input  | Signals that the bus Request was acknowledged and bus access granted    |
+| `Interrupt`       | Output | Signals the Completion of the current transfer                          |
+| `c_config`        | Input  | When asserted, tells that the slave interface has been configured       |
+| `con_en`          | Output | Enable signal for the Flip-Flop to store `con_sel`                      |
+| `Channel_en_1`    | Output | Enable for Channel 1                                                    |
+| `Channel_en_2`    | Output | Enable for Channel 2                                                    |
+| `DmacReq`         | Input  | Each bit represents a request to DMAC for data transfer from peripheral |
+| `ReqAck`          | Output | Each bit is a Request Acknowledgment signal for each peripheral         |
+| `DmacReq_Reg_en`  | Output | Enable to latch `DmacReq` into `DmacReq_Reg`                            |
+| `SAddr_Reg_en`    | Output | Enable for Source Address Register                                      |
+| `DAddr_Reg_en`    | Output | Enable for Destination Address Register                                 |
+| `Trans_sz_Reg_en` | Output | Enable for Transfer Size Register                                       |
+| `Ctrl_Reg_en`     | Output | Enable for Control Register                                             |
+| `PeriAddr_reg_en` | Output | Enable for Peripheral Address Register                                  |
+| `addr_inc_sel`    | Output | Selector for address increment scheme (Src/Dst/TSize/Ctrl sequence)     |
+| `config_write`    | Output | Write enable during configuration phase                                 |
+| `config_HTrans`   | Output | Transfer type during configuration (Idle, Busy, Non_Seq, Seq)           |
+| `HReady`          | Input  | Indicates bus is ready for the next transfer                            |
+
+---
+
+### **State Transition Graph:**
+<div align='center'>
+  <img src='../DMAC/DMAC_main_stg.png'>
+</div>
+
+---
+
+### **States:**
+| State                 | Purpose                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Idle`                | The which indicates the DMAC is not handling any Requests                                                                                      |
+| `BUS_REQD`            | DMAC has latched the request and asserts `Bus_Req`, waits for `Bus_Grant` and sends read request to peripheral for reading the Source Address. |
+| `WAIT_FOR_SRC`        | Fetches and writes the **Source Address Register** once the bus is granted.                                                                    |
+| `WAIT_FOR_DST`        | Fetches and writes the **Destination Address Register**.                                                                                       |
+| `WAIT_FOR_TRANS_SIZE` | Configures the **Transfer Size Register** for the data transfer.                                                                               |
+| `WAIT_FOR_CTRL`       | Configures the **Control Register** of DMAC, decides whether MSB or LSB request to serve.                                                      |
+| `MSB Req`             | State indicating that the peripheral with a higher priority has made the request                                                               |
+| `LSB`                 | State indicating that the peripheral with a lower priority has made the request                                                                |
+| `Wait`                | A wait state until the transfer is complete                                                                                                    |
+
+---
+
+## **DMAC Channel**
+## **Pinout:**
+<div align='center'>
+  <img src='../DMAC_Channel/DMAC_Channel_Pinout.png'>
+</div>
+
+---
+
+## **Signals:**
+| Signals            | Type   | Width | Purpose                                                                       |
+| ------------------ | ------ | ----- | ----------------------------------------------------------------------------- |
+| `Channel_en`       | Input  | 1     | Enables the channel.                                                          |
+| `Source_Addr`      | Input  | 32    | The starting memory location from which data is read during a transfer.       |
+| `Destination_Addr` | Input  | 32    | The starting memory location to which data will be written during a transfer. |
+| `Transfer_Size`    | Input  | 32    | Specifies the total number of words to transfer.                              |
+| `Burst_Size`       | Input  | 4     | Indicates the number of beats in a burst transfer.                            |
+| `RData`            | Input  | 32    | Data read from the slave during a DMA read operation.                         |
+| `ReadyIn`          | Input  | 1     | Indicates whether the processor is ready to send the data.                    |
+| `HSize`            | Input  | 2     | Specifies the size of each transfer: byte (00), halfword (01), word (10).     |
+| `Irq`              | Output | 1     | Interrupt signal raised when the DMA transfer is complete.                    |
+| `WData`            | Output | 32    | Data to be written to the destination address during a DMA write operation.   |
+| `Ready_Out`        | Output | 1     | Indicates that the DMA controller is ready to perform a transfer.             |
+| `HAddr`            | Output | 32    | Address sent to the AHB Bus for the read/write operation.                     |
+| `Write`            | Output | 1     | Indicate write operation when asserted and read when 0.                       |
+| `Burst_Size`       | Output | 4     | Indicate number of beats in a burst transfer.                                 |
+| `HTrans`           | Output | 2     | Transfer type on the AHB bus (IDLE,BUSY NONSEQ, SEQ).                         |
+| `MHSize`           | Output | 2     | Specifies the size of each transfer: byte (00), halfword (01), word (10).     |
+| `MWSTRB`           | Output | 4     | Indicates which byte(s) are active during a write.                            |
+
+---
+
+
+## Description: 
+The DMAC (Direct Memory Access Controller) channel is responsible for autonomously transferring data between a source and destination without CPU intervention. It is designed to support both single transfers (one word per transaction) and burst transfers (multiple words per transaction), providing flexibility for various use cases.
+
+Each channel includes a dedicated FIFO buffer, which temporarily holds data during burst operations. Once the data has been successfully transferred, the channel automatically generates an interrupt to notify the CPU that the operation is complete.
+
+---
+
+## Working Pipeline: 
+
+<div align='center'>
+  <img src='../DMAC_Channel/DMAC_Channel_Pipeline.png'>
+</div>
+
+---
+
+### Operation
+
+The DMA channel operates through a **finite state machine (FSM)** that governs the control and flow of data. The following outlines the step-by-step operation:
+
+---
+
+### Start Condition
+- The transfer begins when the **`channel_en`** signal for the selected channel is asserted.
+- The FSM transitions from the **IDLE** state to the **ENABLED** state.
+- During this transition, the following internal registers are loaded from the previously configured values:
+  - `Src_Addr`: Latched source address
+  - `Dst_Addr`: Latched destination address
+  - `Size_Reg`: Size of the transfer
+  - `Burst_Size`: Number of words to be transferred per burst
+
+---
+
+### Data Transfer
+- **Process Flow**  
+  - Issues **read request** to source → increments source address.  
+  - Stores valid data in **FIFO**.  
+  - Issues **write request** to destination → increments destination address.  
+  - Repeats until full transfer completes.  
+
+- **Burst Mode**  
+  - Reads multiple items into FIFO, then writes sequentially.  
+  - If `transfer_size` is a multiple of `burst_size` → all data transferred in bursts.  
+  - Otherwise → largest possible bursts used, remainder (`transfer_size % burst_size`) done via single transfers.  
+
+- **MWSTRB (Write Strobe Signal)**  
+  - Indicates which **byte** (if `HSize = byte`) or **halfword** (if `HSize = halfword`) is valid in the transferred word.  
+  - Each `MWSTRB` combination maps to valid bytes in a word.  
+
+---
+
+
+### Completion
+- After the final data word is transferred:
+  - The FSM returns to the **IDLE** state.
+  - The DMA channel asserts an **interrupt signal** to the CPU to indicate successful completion.
+
+---
+
+## Registers
+
+| Register Name       | Width | Description                                                                                                                                                                                                 |
+| ------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Src_Addr`          | 32    | Source memory address                                                                                                                                                                                       |
+| `Dst_Addr`          | 32    | Destination memory address                                                                                                                                                                                  |
+| `Transfer_Size`     | 32    | Total number of words to transfer                                                                                                                                                                           |
+| `Burst_Size`        | 32    | Number of words to be transferred per burst                                                                                                                                                                 |
+| `Decrement_Counter` | 32    | Tracks the remaining number of data items to be read or written in the current burst. It decrements with each successful transfer and resets to `Burst_Size` at the start of every new read or write burst. |
+| `HSize_Reg`         | 2     | Stores the size of transfer: byte (00), halfword (01), word (10).                                                                                                                                           |
+
+---
+
+## **DMAC Channel DataPath**
+<div align='center'>
+  <img src='../DMAC_Channel/DMAC_Channel_Datapath.png'>
+</div>
+
+---
+
+## **DMAC Channel Controller**
+
+### **Internal Signals**
+| Signal       | Type   | Purpose                                                                                                                 |
+| ------------ | ------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `channel_en` | Input  | Enables the currently selected DMA channel.                                                                             |
+| `readyIn`    | Input  | Indicates whether the source is ready to provide data.                                                                  |
+| `fifo_full`  | Input  | Indicates the internal FIFO is full and cannot accept more data.                                                        |
+| `fifo_empty` | Input  | Indicates the internal FIFO is empty and no data is available to send.                                                  |
+| `bsz`        | Input  | Asserted when decrement counter stores 0, indicating current read/write burst is done.                                  |
+| `tslb`       | Input  | Asserted when transfer size is less than burst size, used to indicate that the next transfers will be single transfers. |
+| `tsz`        | Input  | Asserted when transfer size reaches 0.                                                                                  |
+| `M_HResp`    | Input  | Response from Dmac indicating transfer success or failure.                                                              |
+| `irq`        | Output | Interrupt raised when the DMA transfer is complete.                                                                     |
+| `HTrans`     | Output | Specifies transfer type (IDLE, BUSY, NONSEQ, SEQ).                                                                      |
+| `write`      | Output | Indicates direction of transfer: 1 for write, 0 for read.                                                               |
+| `b_sel`      | Output | Selects Burst_Size = 1 for single transfer when asserted.                                                               |
+| `d_sel`      | Output | Selects starting destination address when asserted and incremented destination address when 0.                          |
+| `t_sel`      | Output | Selects starting Transfer Size when asserted and Decremented Transfer Size (After a single or burst transfer) when 0.   |
+| `s_sel`      | Output | Selects starting Source address when asserted and incremented Source address when 0                                     |
+| `h_sel`      | Output | Selects Destination Address to put on AHB Bus during write operation when asserted and Source Address Otherwise.        |
+| `d_en`       | Output | Enable for `Dst_Addr` register.                                                                                         |
+| `s_en`       | Output | Enable for `Src_Addr` register.                                                                                         |
+| `ts_en`      | Output | Enable for `Transfer_Size` register.                                                                                    |
+| `burst_en`   | Output | Enable for `Burst_Size` register.                                                                                       |
+| `count_en`   | Output | Enable for `Decrement_Counter` register.                                                                                |
+| `sz_en`      | Output | Enable for `HSize` register.                                                                                            |
+| `rd_en`      | Output | Read enable signal for reading data from FIFO.                                                                          |
+| `wr_en`      | Output | Write enable signal for writing data to FIFO.                                                                           |
+| `trigger`    | Output | Puts the data output from FIFO on AHB bus.                                                                              |
+
+---
+
+### **State Transition Graph:**
+
+  <img src='../DMAC_Channel/DMAC_Channel_Controller.png'>    
+<hr>
+
+### **States:**
+
+| State        | Purpose                                                                                                                                                    |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Disabled`    | Indicates the DMAC Channel is not handling any Requests.                                                                                                   |
+| `Enabled`     | State indicating that the internal registers of the DMAC Channel are configured.                                                                           |
+| `Read_Wait`   | State indicating that a read operation is going on.                                                                                                        |
+| `Hold_Read`   | State indicating that the bus grant was given to the processor during a read operation, and the state remains active until the DMA channel is re-enabled.  |
+| `Write_Wait`  | State indicating that a write operation is going on.                                                                                                       |
+| `Hold_Write`  | State indicating that the bus grant was given to the processor during a write operation, and the state remains active until the DMA channel is re-enabled. |
+
+---
