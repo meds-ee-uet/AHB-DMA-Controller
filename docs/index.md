@@ -1,7 +1,7 @@
 # ***AHB Direct Access Memory Controller (DMAC)***
 
 <div style="text-align: center;">
-  <img src="../Meds.png" alt="Meds" width="200">
+  <img src="Meds.png" alt="Meds" width="200">
 </div>
 
 > Efficient, configurable AMBA-AHB compliant DMA engine supporting burst/block transfers and CPU offloading for high-performance embedded systems.
@@ -10,7 +10,7 @@
 
 ## Top Level Architecture
 
-<img src= ../DMAC/DMAC_pinout.png>
+<img src= "DMAC/DMAC_pinout.png">
 
 ---
 
