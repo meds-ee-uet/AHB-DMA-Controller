@@ -1,3 +1,18 @@
 site_name: AHB Direct Memory Access (DMA) Controller Documentation
+
+# Navigation structure
 nav:
-  - Home: index.md
+  - Home: Home.md
+  - Installation: Installation.md
+  - Theory of Operation: Theory.md
+  - User Guide: User_Guide.md
+  - Developer Guide: Developer_Guide.md
+  # - API Reference: Api_Reference.md
+  - Resources: Resources.md
+
+# Theme configuration
+theme:
+  name: readthedocs
+  language: en
+
+
