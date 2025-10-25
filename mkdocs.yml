@@ -2,7 +2,7 @@ site_name: AHB Direct Memory Access (DMA) Controller Documentation
 
 # Navigation structure
 nav:
-  - Home: Home.md
+  - Home: index.md
   - Installation: Installation.md
   - Theory of Operation: Theory.md
   - User Guide: User_Guide.md
